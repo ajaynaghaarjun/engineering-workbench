@@ -76,6 +76,7 @@ def page(): story.append(PageBreak())
 
 h('Unified Engineering Workbench')
 p('Assessment prototype | C++17 | Windows 11 x64 target | 2 November 2026')
+p('Project repository: <link href="https://github.com/ajaynaghaarjun/engineering-workbench" color="#1d5b83">https://github.com/ajaynaghaarjun/engineering-workbench</link><br/>Portable Windows package and report: <link href="https://github.com/ajaynaghaarjun/engineering-workbench/releases/latest" color="#1d5b83">GitHub release downloads</link>. The application runs locally after extraction; this repository link is not a hosted browser instance.')
 p('<b>Delivery status:</b> a Windows x64 executable has been cross-compiled on Apple Silicon. Mac release builds, numerical tests and HTTP/browser workflows have been exercised. Actual Windows 11 launch is unverified. The candidate handwritten appendix is outstanding. These are explicit limitations, not claimed successes.')
 story.append(Paragraph('1. Design and reproducibility',styles['Heading2']))
 p('A portable C++ executable serves a bundled browser interface over loopback only. C++ owns numerical work, parsers, benchmarks and hardware mock state. HTML/CSS/JavaScript provide presentation, an orthographic 3D view and plots. No external frontend or solver libraries are needed, and no CDN is used.')

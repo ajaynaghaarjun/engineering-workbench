@@ -1,5 +1,9 @@
 # Unified Engineering Workbench
 
+[Project repository](https://github.com/ajaynaghaarjun/engineering-workbench) · [Download portable Windows package and report](https://github.com/ajaynaghaarjun/engineering-workbench/releases/latest) · [Six-page report](docs/Report.pdf)
+
+The app runs locally through the C++ launcher. This GitHub repository is the source and downloadable project, not a hosted browser instance.
+
 ## Version 1.7 - sampled profiles and temperature-limit assessment
 
 The Scenario workspace now assesses the displayed rod against a user-defined upper temperature limit. C++ compares the limit to the continuous analytical maximum, reports the signed margin, and samples 2-101 uniform stations from one solved field. Each station includes FEM/exact temperature, error, flux, element index and independent FEM/analytical exceedance flags. Temperature/limit and error plots, an exceeding-stations filter, CSV/JSON export and error-plot PNG export are included. Limits apply to this steady 1D model, not a physical safety certification. Maximum mesh: 10000 elements for this inspection.
