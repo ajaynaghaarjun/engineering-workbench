@@ -1,0 +1,25 @@
+"""Create a source-inclusive portable Windows package from the verified release build."""
+from pathlib import Path
+from shutil import copy2,copytree
+import hashlib,json,zipfile
+ROOT=Path(__file__).resolve().parents[1]
+DEST=ROOT/'dist/Workbench'
+DEST.mkdir(parents=True,exist_ok=True)
+for name in ['web','data','src','tests','cmake','docs','results','licenses','.vscode']:
+    copytree(ROOT/name,DEST/name,dirs_exist_ok=True)
+for name in ['CMakeLists.txt','README.md','LICENSES.md','dependencies.lock.json','.clang-format','.gitignore']:
+    copy2(ROOT/name,DEST/name)
+copytree(ROOT/'tools',DEST/'tools',dirs_exist_ok=True)
+copy2(ROOT/'build/windows/Launch.exe',DEST/'Launch.exe')
+copy2(ROOT/'build/windows/core_tests.exe',DEST/'tests/core_tests.exe')
+if (ROOT/'version-control.bundle').exists():copy2(ROOT/'version-control.bundle',DEST/'version-control.bundle')
+manifest={str(p.relative_to(DEST)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(DEST.rglob('*')) if p.is_file() and p.name!='SHA256SUMS.json'}
+(DEST/'SHA256SUMS.json').write_text(json.dumps(manifest,indent=2))
+archive=ROOT/'dist/CandidateID_Workbench.zip'
+with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
+    for p in sorted(DEST.rglob('*')):
+        if p.is_file():z.write(p,p.relative_to(DEST))
+with zipfile.ZipFile(archive) as z:
+    assert z.testzip() is None
+    assert 'Launch.exe' in z.namelist() and 'web/index.html' in z.namelist()
+print(f'Created {archive.name}: {archive.stat().st_size} bytes, {len(manifest)} manifested files')

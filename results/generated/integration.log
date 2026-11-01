@@ -1,0 +1,13 @@
+2026-11-01T12:22:16.280Z
+PASS backend health
+PASS thermal numerical study
+PASS custom rod and export payload
+PASS reject invalid thermal parameter
+PASS bundled STL import
+PASS bundled CSV import
+PASS reject empty and malformed imports
+PASS parallel agreement and raw repetitions
+PASS all three mock adapters and timeout recovery
+PASS backpropagation gradient and loss verification
+PASS path traversal rejected
+PASS cross-origin API request rejected

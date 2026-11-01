@@ -1,0 +1,5 @@
+{
+  "runtime": {"frontend": "Browser native HTML5 Canvas 2D; no external JavaScript dependencies", "backend": "C++17 standard library; system sockets"},
+  "build_observed": {"cmake": "4.4.5", "mac_compiler": "AppleClang 21.0.0", "windows_compiler": "MinGW-w64 GCC 16.2.0", "mingw_w64_package": "14.0.0_3", "configuration": "Release"},
+  "note": "No dependencies are downloaded during application launch. Build tools are not required by end users. See LICENSES.md for runtime terms."
+}

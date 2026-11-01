@@ -1,27 +1,442 @@
 'use strict';
-const $=s=>document.querySelector(s);let pending=0,thermal=null,studyData=null,performanceData=null,backpropData=null;
-function status(message,error=false){$('#status').textContent=message;$('#status').classList.toggle('error',error);}
-async function api(path,body=''){pending++;$('#busy-state').textContent='C++ operation running · safe completion';try{const response=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'text/plain'},body});const data=await response.json();if(!response.ok||data.error)throw Error(data.error||'Backend request failed');return data;}finally{pending--;if(!pending)$('#busy-state').textContent='';}}
-async function task(button,message,fn){if(button.disabled)return;button.disabled=true;status(message);try{await fn();status('Completed. Results verified and ready to inspect or export.');}catch(e){status(e.message,true);}finally{button.disabled=false;}}
-function download(name,text,type='text/csv'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-function table(headers,rows){const t=document.createElement('table'),head=t.createTHead().insertRow();headers.forEach(h=>{const th=document.createElement('th');th.textContent=h;head.append(th);});const body=t.createTBody();rows.forEach(row=>{const tr=body.insertRow();row.forEach(v=>{tr.insertCell().textContent=String(v);});});return t;}
-function plot(canvas,series,xLabel,yLabel,logY=false){const c=canvas.getContext('2d'),w=canvas.width,h=canvas.height;c.clearRect(0,0,w,h);c.font='13px sans-serif';const all=series.flatMap(s=>s.points).filter(p=>p.every(Number.isFinite));if(!all.length)return;const transform=y=>logY?Math.log10(Math.max(y,1e-20)):y;let xmin=Math.min(...all.map(p=>p[0])),xmax=Math.max(...all.map(p=>p[0])),ymin=Math.min(...all.map(p=>transform(p[1]))),ymax=Math.max(...all.map(p=>transform(p[1])));if(xmax===xmin)xmax++;if(ymax===ymin)ymax++;let pad=(ymax-ymin)*.1;ymin-=pad;ymax+=pad;const px=x=>65+(x-xmin)/(xmax-xmin)*(w-100),py=y=>h-48-(transform(y)-ymin)/(ymax-ymin)*(h-90);c.strokeStyle='#dce5ed';c.fillStyle='#5b7186';for(let i=0;i<=4;i++){const y=ymin+(ymax-ymin)*i/4,yy=h-48-i*(h-90)/4;c.beginPath();c.moveTo(65,yy);c.lineTo(w-35,yy);c.stroke();c.fillText(logY?'10^'+y.toFixed(1):y.toPrecision(4),3,yy+4);const x=xmin+(xmax-xmin)*i/4;c.fillText(x.toPrecision(3),px(x)-12,h-28);}series.forEach((s,i)=>{c.strokeStyle=s.color;c.lineWidth=2;c.beginPath();s.points.forEach((p,j)=>{if(j)c.lineTo(px(p[0]),py(p[1]));else c.moveTo(px(p[0]),py(p[1]));});c.stroke();c.fillStyle=s.color;c.fillText(s.name,75+i*245,22);});c.fillStyle='#334e68';c.fillText(xLabel,w/2-35,h-6);c.fillText(yLabel,8,20);}
-document.querySelectorAll('[data-tab]').forEach(button=>button.onclick=()=>{document.querySelectorAll('.view').forEach(s=>s.hidden=s.id!==button.dataset.tab);document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b===button));if(button.dataset.tab==='geometry')drawScene();});
+const $ = s => document.querySelector(s);
+let pending = 0, thermal = null, studyData = null, performanceData = null, backpropData = null;
+function status(message, error = false) {
+    $('#status').textContent = message;
+    $('#status').classList.toggle('error', error);
+}
+async function api(path, body = '') {
+    pending++;
+    $('#busy-state').textContent = 'C++ operation running · safe completion';
+    try {
+        const response = await fetch(
+            '/api/' + path, {method : 'POST', headers : {'Content-Type' : 'text/plain'}, body});
+        const data = await response.json();
+        if (!response.ok)
+            throw Error(data.error || 'Backend request failed');
+        return data;
+    } finally {
+        pending--;
+        if (!pending)
+            $('#busy-state').textContent = '';
+    }
+}
+async function task(button, message, fn) {
+    if (button.disabled)
+        return;
+    button.disabled = true;
+    status(message);
+    try {
+        await fn();
+        if (!$('#status').classList.contains('error'))
+            status('Operation completed. Results are ready to inspect or export.');
+    } catch (e) {
+        status(e.message, true);
+    } finally {
+        button.disabled = false;
+    }
+}
+function download(name, text, type = 'text/csv') {
+    const url = URL.createObjectURL(new Blob([ text ], {type}));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function table(headers, rows) {
+    const t = document.createElement('table'), head = t.createTHead().insertRow();
+    headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        head.append(th);
+    });
+    const body = t.createTBody();
+    rows.forEach(row => {
+        const tr = body.insertRow();
+        row.forEach(v => { tr.insertCell().textContent = String(v); });
+    });
+    return t;
+}
+function plot(canvas, series, xLabel, yLabel, logY = false) {
+    const c = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+    c.clearRect(0, 0, w, h);
+    c.font = '13px sans-serif';
+    const all = series.flatMap(s => s.points).filter(p => p.every(Number.isFinite));
+    if (!all.length)
+        return;
+    const transform = y => logY ? Math.log10(Math.max(y, 1e-20)) : y;
+    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+    for (const p of all) {
+        xmin = Math.min(xmin, p[0]);
+        xmax = Math.max(xmax, p[0]);
+        ymin = Math.min(ymin, transform(p[1]));
+        ymax = Math.max(ymax, transform(p[1]));
+    }
+    if (xmax === xmin)
+        xmax++;
+    if (ymax === ymin)
+        ymax++;
+    let pad = (ymax - ymin) * .1;
+    ymin -= pad;
+    ymax += pad;
+    const px = x => 65 + (x - xmin) / (xmax - xmin) * (w - 100),
+          py = y => h - 48 - (transform(y) - ymin) / (ymax - ymin) * (h - 90);
+    c.strokeStyle = '#dce5ed';
+    c.fillStyle = '#5b7186';
+    for (let i = 0; i <= 4; i++) {
+        const y = ymin + (ymax - ymin) * i / 4, yy = h - 48 - i * (h - 90) / 4;
+        c.beginPath();
+        c.moveTo(65, yy);
+        c.lineTo(w - 35, yy);
+        c.stroke();
+        c.fillText(logY ? '10^' + y.toFixed(1) : y.toPrecision(4), 3, yy + 4);
+        const x = xmin + (xmax - xmin) * i / 4;
+        c.fillText(x.toPrecision(3), px(x) - 12, h - 28);
+    }
+    series.forEach((s, i) => {
+        c.strokeStyle = s.color;
+        c.lineWidth = 2;
+        c.beginPath();
+        s.points.forEach((p, j) => {
+            if (j)
+                c.lineTo(px(p[0]), py(p[1]));
+            else
+                c.moveTo(px(p[0]), py(p[1]));
+        });
+        c.stroke();
+        c.fillStyle = s.color;
+        c.fillText(s.name, 75 + i * 245, 22);
+    });
+    c.fillStyle = '#334e68';
+    c.fillText(xLabel, w / 2 - 35, h - 6);
+    c.fillText(yLabel, 8, 20);
+}
+document.querySelectorAll('[data-tab]').forEach(button => button.onclick = () => {
+    document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== button.dataset.tab);
+    document.querySelectorAll('[data-tab]')
+        .forEach(b => b.classList.toggle('active', b === button));
+    if (button.dataset.tab === 'geometry')
+        drawScene();
+});
 // Dependency-free orthographic 3D renderer. Geometry and CSV parsing occur in C++.
-const scene={vertices:[],nodes:[],yaw:.65,pitch:-.4,zoom:1,panX:0,panY:0,center:[0,0,0],radius:1,projected:[]};
-function fit(){const points=scene.nodes.length?scene.nodes.map(n=>n.slice(1,4)):scene.vertices;if(!points.length)return;const lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];points.forEach(p=>p.forEach((v,i)=>{lo[i]=Math.min(lo[i],v);hi[i]=Math.max(hi[i],v);}));scene.center=lo.map((v,i)=>(v+hi[i])/2);scene.radius=Math.max(...lo.map((v,i)=>hi[i]-v),1e-12);scene.zoom=1;scene.panX=scene.panY=0;drawScene();}
-function project(p){let [x,y,z]=p.map((v,i)=>(v-scene.center[i])/scene.radius),a=scene.yaw,b=scene.pitch;let xx=x*Math.cos(a)+z*Math.sin(a),zz=-x*Math.sin(a)+z*Math.cos(a),yy=y*Math.cos(b)-zz*Math.sin(b);return [500+xx*350*scene.zoom+scene.panX,255-yy*350*scene.zoom+scene.panY,y*Math.sin(b)+zz*Math.cos(b)];}
-function temperatureColor(t,min,max){const f=(t-min)/(max-min||1);return `hsl(${240*(1-f)},75%,48%)`;}
-function drawScene(){const canvas=$('#scene'),c=canvas.getContext('2d');c.clearRect(0,0,1000,510);c.strokeStyle='#e4ecf3';for(let x=0;x<1000;x+=50){c.beginPath();c.moveTo(x,0);c.lineTo(x,510);c.stroke();}for(let y=0;y<510;y+=50){c.beginPath();c.moveTo(0,y);c.lineTo(1000,y);c.stroke();}if(scene.vertices.length){let triangles=[];for(let i=0;i<scene.vertices.length;i+=3){const p=scene.vertices.slice(i,i+3).map(project);triangles.push({p,z:p.reduce((s,v)=>s+v[2],0)});}triangles.sort((a,b)=>a.z-b.z);triangles.forEach(({p},i)=>{c.beginPath();p.forEach((v,j)=>j?c.lineTo(v[0],v[1]):c.moveTo(v[0],v[1]));c.closePath();c.fillStyle=`hsl(202,38%,${64+i%5*3}%)`;c.fill();c.strokeStyle='#234d6b';c.stroke();});}scene.projected=[];if(scene.nodes.length){const temps=scene.nodes.map(n=>n[4]),min=Math.min(...temps),max=Math.max(...temps);scene.nodes.map(n=>({n,p:project(n.slice(1,4))})).sort((a,b)=>a.p[2]-b.p[2]).forEach(({n,p})=>{c.fillStyle=temperatureColor(n[4],min,max);c.beginPath();c.arc(p[0],p[1],7,0,Math.PI*2);c.fill();c.strokeStyle='white';c.stroke();scene.projected.push({n,p});});$('#legend').textContent=`Temperature: ${min.toFixed(2)} °C (blue) → ${max.toFixed(2)} °C (red) · coordinates: m`; }else $('#legend').textContent='STL coordinates: source units (sample: m)';c.fillStyle='#668097';c.font='13px sans-serif';c.fillText('Orthographic 3D · drag to rotate · Shift-drag to pan',18,490);}
-let drag=null;$('#scene').onpointerdown=e=>{drag={x:e.clientX,y:e.clientY,moved:false};e.currentTarget.setPointerCapture(e.pointerId);};$('#scene').onpointermove=e=>{if(!drag)return;let dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>1)drag.moved=true;if(e.shiftKey){scene.panX+=dx;scene.panY+=dy;}else{scene.yaw+=dx*.01;scene.pitch+=dy*.01;}drag.x=e.clientX;drag.y=e.clientY;drawScene();};$('#scene').onpointerup=e=>{if(drag&&!drag.moved){const rect=e.currentTarget.getBoundingClientRect(),x=(e.clientX-rect.left)*1000/rect.width,y=(e.clientY-rect.top)*510/rect.height;const nearest=scene.projected.map(v=>({...v,d:Math.hypot(v.p[0]-x,v.p[1]-y)})).sort((a,b)=>a.d-b.d)[0];if(nearest&&nearest.d<25){const n=nearest.n;$('#inspection').textContent=`Node ${n[0]} · x=${n[1]} m, y=${n[2]} m, z=${n[3]} m · ${n[4]} °C`;}}drag=null;};$('#scene').onwheel=e=>{e.preventDefault();scene.zoom=Math.min(15,Math.max(.1,scene.zoom*Math.exp(-e.deltaY*.001)));drawScene();};$('#fit').onclick=fit;
-async function loadGeometry(kind,text,name){const data=await api(kind,text);scene.vertices=data.vertices||[];scene.nodes=data.nodes||[];$('#inspection').textContent=kind==='stl'?`${name}: ${scene.vertices.length/3} triangles loaded.`:`${name}: ${scene.nodes.length} temperature nodes loaded. Click a point to inspect.`;fit();}
-['stl','csv'].forEach(kind=>{$('#'+kind+'-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;status('Validating '+file.name+' in C++…');try{if(file.size>20*1024*1024)throw Error('File exceeds 20 MiB.');await loadGeometry(kind,await file.text(),file.name);status('File validated and loaded.');}catch(err){status(err.message,true);}};$('#sample-'+kind).onclick=e=>task(e.target,'Loading bundled sample…',async()=>{const path=kind==='stl'?'/sample.stl':'/temperatures.csv';await loadGeometry(kind,await(await fetch(path)).text(),kind==='stl'?'Self-created tetrahedron':'Synthetic temperature example');});});
-function showThermal(run){thermal=run;const exact=[];for(let i=0;i<run.nodes.length-1;i++){exact.push([run.nodes[i][0],run.nodes[i][2]],[run.midpoints[i][0],run.midpoints[i][2]]);}exact.push([run.nodes.at(-1)[0],run.nodes.at(-1)[2]]);plot($('#thermal-chart'),[{name:'FEA temperature',color:'#236f9d',points:run.nodes.map(n=>n.slice(0,2))},{name:'Analytical temperature',color:'#c16c2c',points:exact}],'Position x (m)','T (°C)');$('#thermal-summary').textContent=`${run.elements} elements · maximum midpoint error ${run.midpoint_error_C.toExponential(6)} °C`;$('#thermal-export').disabled=false;}
-$('#thermal-form').onsubmit=e=>{e.preventDefault();const button=e.target.querySelector('button'),values=[...new FormData(e.target).values()].join(' ');task(button,'Solving in C++…',async()=>showThermal(await api('thermal',values)));};
-$('#study').onclick=e=>task(e.target,'Running four meshes and analytical checks…',async()=>{studyData=await api('study');showThermal(studyData.runs.at(-1));$('#thermal-summary').replaceChildren(table(['Elements','Max midpoint error (°C)','Error ratio'],studyData.runs.map((r,i)=>[r.elements,r.midpoint_error_C.toExponential(6),i?(studyData.runs[i-1].midpoint_error_C/r.midpoint_error_C).toFixed(4):'—'])));plot($('#convergence-chart'),[{name:'Midpoint error (log scale)',color:'#236f9d',points:studyData.runs.map(r=>[r.elements,r.midpoint_error_C])}],'Elements','Error (°C)',true);$('#convergence-export').disabled=false;});
-$('#thermal-export').onclick=()=>download('temperature.csv','x_m,FEA_C,exact_C\n'+thermal.nodes.map(n=>n.join(',')).join('\n'));$('#convergence-export').onclick=()=>download('convergence.csv','elements,midpoint_max_error_C\n'+studyData.runs.map(r=>`${r.elements},${r.midpoint_error_C}`).join('\n'));
-$('#benchmark-form').onsubmit=e=>{e.preventDefault();const form=new FormData(e.target);task(e.target.querySelector('[type=submit]'),'Benchmark running: warm-up and five repetitions per worker count…',async()=>{performanceData=await api('benchmark',form.get('cases')+' '+form.get('elements'));const d=performanceData;$('#benchmark-results').replaceChildren(table(['Workers','Median (s)','Speedup','Efficiency','Max difference (°C)'],d.rows.map(r=>[r.workers,r.median_s.toFixed(6),r.speedup.toFixed(3),r.efficiency.toFixed(3),r.max_difference_C])));const p=document.createElement('p');p.textContent=`${d.logical_cpus} logical CPUs · ${d.cases} cases × ${d.elements} elements · agreement threshold ≤ 1e-8 °C. `+(d.rows.every(r=>r.max_difference_C<=1e-8)?'PASS':'FAIL');$('#benchmark-results').append(p);$('#benchmark-export').disabled=false;});};
-$('#benchmark-export').onclick=()=>download('benchmark.csv','workers,repetition,compute_s,median_s,speedup,efficiency,max_difference_C\n'+performanceData.rows.flatMap(r=>r.samples_s.map((v,i)=>[r.workers,i+1,v,r.median_s,r.speedup,r.efficiency,r.max_difference_C].join(','))).join('\n'));
-[['microcontroller','STM32 Nucleo-F401RE'],['fpga','Digilent Arty A7-35T'],['jtag','ST-LINK/V2 debug adapter']].forEach(([id,title])=>{const card=document.createElement('article');card.className='card';const h=document.createElement('h3');h.textContent=title;card.append(h);const state=document.createElement('p');state.textContent='Simulated · disconnected';card.append(state);['inspect','connect','telemetry','timeout','disconnect'].forEach(action=>{const button=document.createElement('button');button.textContent=action;button.onclick=()=>task(button,'Running simulated '+action+'…',async()=>{const result=await api('hardware',id+' '+action);state.textContent='Simulated · '+(result.connected?'connected':'disconnected');$('#hardware-output').textContent=JSON.stringify(result,null,2);if(result.error)status(result.error,true);});card.append(button);});$('#device-cards').append(card);});
-$('#backprop').onclick=e=>task(e.target,'Computing chain-rule gradients and central differences…',async()=>{backpropData=await api('backprop');const b=backpropData;$('#backprop-results').replaceChildren(table(['Parameter','Analytic gradient','Finite difference','After first update'],['w','b','v','c'].map((p,i)=>[p,b.gradient[i].toFixed(9),b.numerical[i].toFixed(9),b.updated[i].toFixed(9)])));const p=document.createElement('p');p.textContent=`Initial h=${b.hidden.toFixed(9)}; prediction=${b.prediction.toFixed(9)}; loss=${b.initial_loss.toFixed(9)}. Max gradient error=${b.max_gradient_error.toExponential(3)} (${b.max_gradient_error<=1e-5?'PASS':'FAIL'}).`;$('#backprop-results').append(p);plot($('#loss-chart'),[{name:'Training loss (log scale)',color:'#236f9d',points:[[0,b.initial_loss],...b.loss_after_updates.map((v,i)=>[i+1,v])]}],'Update','Loss',true);$('#loss-export').disabled=false;});$('#loss-export').onclick=()=>download('loss.csv','update,loss\n0,'+backpropData.initial_loss+'\n'+backpropData.loss_after_updates.map((v,i)=>`${i+1},${v}`).join('\n'));
-fetch('/api/health').then(r=>r.json()).then(d=>{$('#connection').textContent=d.backend+' · ready';status('C++ backend connected. Select a view to begin.');drawScene();}).catch(e=>{$('#connection').textContent='Disconnected';status('Backend unavailable: '+e.message,true);});
+const scene = {
+    vertices : [],
+    nodes : [],
+    yaw : .65,
+    pitch : -.4,
+    zoom : 1,
+    panX : 0,
+    panY : 0,
+    center : [ 0, 0, 0 ],
+    radius : 1,
+    projected : []
+};
+function fit() {
+    const points = scene.nodes.length ? scene.nodes.map(n => n.slice(1, 4)) : scene.vertices;
+    if (!points.length)
+        return;
+    const lo = [ Infinity, Infinity, Infinity ], hi = [ -Infinity, -Infinity, -Infinity ];
+    points.forEach(p => p.forEach((v, i) => {
+        lo[i] = Math.min(lo[i], v);
+        hi[i] = Math.max(hi[i], v);
+    }));
+    scene.center = lo.map((v, i) => (v + hi[i]) / 2);
+    scene.radius = Math.max(...lo.map((v, i) => hi[i] - v), 1e-12);
+    scene.zoom = 1;
+    scene.panX = scene.panY = 0;
+    drawScene();
+}
+function project(p) {
+    let [x, y, z] = p.map((v, i) => (v - scene.center[i]) / scene.radius), a = scene.yaw,
+               b = scene.pitch;
+    let xx = x * Math.cos(a) + z * Math.sin(a), zz = -x * Math.sin(a) + z * Math.cos(a),
+        yy = y * Math.cos(b) - zz * Math.sin(b);
+    return [
+        500 + xx * 350 * scene.zoom + scene.panX, 255 - yy * 350 * scene.zoom + scene.panY,
+        y * Math.sin(b) + zz * Math.cos(b)
+    ];
+}
+function temperatureColor(t, min, max) {
+    const f = (t - min) / (max - min || 1);
+    return `hsl(${240 * (1 - f)},75%,48%)`;
+}
+function drawScene() {
+    const canvas = $('#scene'), c = canvas.getContext('2d');
+    c.clearRect(0, 0, 1000, 510);
+    c.strokeStyle = '#e4ecf3';
+    for (let x = 0; x < 1000; x += 50) {
+        c.beginPath();
+        c.moveTo(x, 0);
+        c.lineTo(x, 510);
+        c.stroke();
+    }
+    for (let y = 0; y < 510; y += 50) {
+        c.beginPath();
+        c.moveTo(0, y);
+        c.lineTo(1000, y);
+        c.stroke();
+    }
+    if (scene.vertices.length) {
+        let triangles = [];
+        for (let i = 0; i < scene.vertices.length; i += 3) {
+            const p = scene.vertices.slice(i, i + 3).map(project);
+            triangles.push({p, z : p.reduce((s, v) => s + v[2], 0)});
+        }
+        triangles.sort((a, b) => a.z - b.z);
+        triangles.forEach(({p}, i) => {
+            c.beginPath();
+            p.forEach((v, j) => j ? c.lineTo(v[0], v[1]) : c.moveTo(v[0], v[1]));
+            c.closePath();
+            c.fillStyle = `hsl(202,38%,${64 + i % 5 * 3}%)`;
+            c.fill();
+            c.strokeStyle = '#234d6b';
+            c.stroke();
+        });
+    }
+    scene.projected = [];
+    if (scene.nodes.length) {
+        const temps = scene.nodes.map(n => n[4]), min = Math.min(...temps),
+              max = Math.max(...temps);
+        scene.nodes.map(n => ({n, p : project(n.slice(1, 4))}))
+            .sort((a, b) => a.p[2] - b.p[2])
+            .forEach(({n, p}) => {
+                c.fillStyle = temperatureColor(n[4], min, max);
+                c.beginPath();
+                c.arc(p[0], p[1], 7, 0, Math.PI * 2);
+                c.fill();
+                c.strokeStyle = 'white';
+                c.stroke();
+                scene.projected.push({n, p});
+            });
+        $('#legend').textContent = `Temperature: ${min.toFixed(2)} °C (blue) → ${
+            max.toFixed(2)} °C (red) · coordinates: m`;
+    } else
+        $('#legend').textContent = 'STL coordinates: source units (sample: m)';
+    c.fillStyle = '#668097';
+    c.font = '13px sans-serif';
+    c.fillText('Orthographic 3D · drag to rotate · Shift-drag to pan', 18, 490);
+}
+let drag = null;
+$('#scene').onpointerdown = e => {
+    drag = {x : e.clientX, y : e.clientY, moved : false};
+    e.currentTarget.setPointerCapture(e.pointerId);
+};
+$('#scene').onpointermove = e => {
+    if (!drag)
+        return;
+    let dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 1)
+        drag.moved = true;
+    if (e.shiftKey) {
+        scene.panX += dx;
+        scene.panY += dy;
+    } else {
+        scene.yaw += dx * .01;
+        scene.pitch += dy * .01;
+    }
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    drawScene();
+};
+$('#scene').onpointerup = e => {
+    if (drag && !drag.moved) {
+        const rect = e.currentTarget.getBoundingClientRect(),
+              x = (e.clientX - rect.left) * 1000 / rect.width,
+              y = (e.clientY - rect.top) * 510 / rect.height;
+        const nearest = scene.projected.map(v => ({...v, d : Math.hypot(v.p[0] - x, v.p[1] - y)}))
+                            .sort((a, b) => a.d - b.d)[0];
+        if (nearest && nearest.d < 25) {
+            const n = nearest.n;
+            $('#inspection').textContent =
+                `Node ${n[0]} · x=${n[1]} m, y=${n[2]} m, z=${n[3]} m · ${n[4]} °C`;
+        }
+    }
+    drag = null;
+};
+$('#scene').onwheel = e => {
+    e.preventDefault();
+    scene.zoom = Math.min(15, Math.max(.1, scene.zoom * Math.exp(-e.deltaY * .001)));
+    drawScene();
+};
+$('#fit').onclick = fit;
+async function loadGeometry(kind, text, name) {
+    const data = await api(kind, text);
+    scene.vertices = data.vertices || [];
+    scene.nodes = data.nodes || [];
+    $('#inspection').textContent =
+        kind === 'stl'
+            ? `${name}: ${scene.vertices.length / 3} triangles loaded.`
+            : `${name}: ${scene.nodes.length} temperature nodes loaded. Click a point to inspect.`;
+    fit();
+}
+['stl', 'csv'].forEach(kind => {
+    $('#' + kind + '-file').onchange = async e => {
+        const file = e.target.files[0];
+        if (!file)
+            return;
+        status('Validating ' + file.name + ' in C++…');
+        try {
+            if (file.size > 20 * 1024 * 1024)
+                throw Error('File exceeds 20 MiB.');
+            await loadGeometry(kind, await file.text(), file.name);
+            status('File validated and loaded.');
+        } catch (err) {
+            status(err.message, true);
+        }
+    };
+    $('#sample-' + kind).onclick = e => task(e.target, 'Loading bundled sample…', async () => {
+        const path = kind === 'stl' ? '/sample.stl' : '/temperatures.csv';
+        await loadGeometry(kind, await (await fetch(path)).text(),
+                           kind === 'stl' ? 'Self-created tetrahedron'
+                                          : 'Synthetic temperature example');
+    });
+});
+function showThermal(run) {
+    thermal = run;
+    const exact = [];
+    for (let i = 0; i < run.nodes.length - 1; i++) {
+        exact.push([ run.nodes[i][0], run.nodes[i][2] ],
+                   [ run.midpoints[i][0], run.midpoints[i][2] ]);
+    }
+    exact.push([ run.nodes.at(-1)[0], run.nodes.at(-1)[2] ]);
+    plot($('#thermal-chart'),
+         [
+             {
+                 name : 'FEA temperature',
+                 color : '#236f9d',
+                 points : run.nodes.map(n => n.slice(0, 2))
+             },
+             {name : 'Analytical temperature', color : '#c16c2c', points : exact}
+         ],
+         'Position x (m)', 'T (°C)');
+    $('#thermal-summary').textContent = `${run.elements} elements · maximum midpoint error ${
+        run.midpoint_error_C.toExponential(6)} °C`;
+    $('#thermal-export').disabled = false;
+}
+$('#thermal-form').onsubmit = e => {
+    e.preventDefault();
+    const button = e.target.querySelector('button'),
+          values = [...new FormData(e.target).values() ].join(' ');
+    task(button, 'Solving in C++…', async () => showThermal(await api('thermal', values)));
+};
+$('#study')
+    .onclick = e => task(e.target, 'Running four meshes and analytical checks…', async () => {
+    studyData = await api('study');
+    showThermal(studyData.runs.at(-1));
+    $('#thermal-summary')
+        .replaceChildren(table(
+            [ 'Elements', 'Max midpoint error (°C)', 'Error ratio' ],
+            studyData.runs.map(
+                (r,
+                 i) => [r.elements, r.midpoint_error_C.toExponential(6),
+                        i ? (studyData.runs[i - 1].midpoint_error_C / r.midpoint_error_C).toFixed(4)
+                          : '—'])));
+    plot($('#convergence-chart'), [ {
+             name : 'Midpoint error (log scale)',
+             color : '#236f9d',
+             points : studyData.runs.map(r => [r.elements, r.midpoint_error_C])
+         } ],
+         'Elements', 'Error (°C)', true);
+    $('#convergence-export').disabled = false;
+});
+$('#thermal-export').onclick = () => download(
+    'temperature.csv', 'x_m,FEA_C,exact_C\n' + thermal.nodes.map(n => n.join(',')).join('\n'));
+$('#convergence-export').onclick = () =>
+    download('convergence.csv',
+             'elements,midpoint_max_error_C\n' +
+                 studyData.runs.map(r => `${r.elements},${r.midpoint_error_C}`).join('\n'));
+$('#benchmark-form').onsubmit = e => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    task(e.target.querySelector('[type=submit]'),
+         'Benchmark running: warm-up and five repetitions per worker count…', async () => {
+             performanceData =
+                 await api('benchmark', form.get('cases') + ' ' + form.get('elements'));
+             const d = performanceData;
+             $('#benchmark-results')
+                 .replaceChildren(table(
+                     [ 'Workers', 'Median (s)', 'Speedup', 'Efficiency', 'Max difference (°C)' ],
+                     d.rows.map(r => [r.workers, r.median_s.toFixed(6), r.speedup.toFixed(3),
+                                      r.efficiency.toFixed(3), r.max_difference_C])));
+             const p = document.createElement('p');
+             p.textContent = `${d.logical_cpus} logical CPUs · ${d.cases} cases × ${
+                                 d.elements} elements · agreement threshold ≤ 1e-8 °C. ` +
+                             (d.rows.every(r => r.max_difference_C <= 1e-8) ? 'PASS' : 'FAIL');
+             $('#benchmark-results').append(p);
+             $('#benchmark-export').disabled = false;
+         });
+};
+$('#benchmark-export').onclick = () => download(
+    'benchmark.csv',
+    'workers,repetition,compute_s,median_s,speedup,efficiency,max_difference_C\n' +
+        performanceData.rows
+            .flatMap(r => r.samples_s.map((v, i) => [r.workers, i + 1, v, r.median_s, r.speedup,
+                                                     r.efficiency, r.max_difference_C]
+                                                        .join(',')))
+            .join('\n'));
+[[ 'microcontroller', 'STM32 Nucleo-F401RE' ], [ 'fpga', 'Digilent Arty A7-35T' ],
+ [ 'jtag', 'ST-LINK/V2 debug adapter' ]]
+    .forEach(([ id, title ]) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        const h = document.createElement('h3');
+        h.textContent = title;
+        card.append(h);
+        const state = document.createElement('p');
+        state.textContent = 'Simulated · disconnected';
+        card.append(state);
+        ['inspect', 'connect', 'telemetry', 'timeout', 'disconnect'].forEach(action => {
+            const button = document.createElement('button');
+            button.textContent = action;
+            button.onclick = () => task(button, 'Running simulated ' + action + '…', async () => {
+                const result = await api('hardware', id + ' ' + action);
+                state.textContent =
+                    'Simulated · ' + (result.connected ? 'connected' : 'disconnected');
+                $('#hardware-output').textContent = JSON.stringify(result, null, 2);
+                if (result.error)
+                    status(result.error, true);
+            });
+            card.append(button);
+        });
+        $('#device-cards').append(card);
+    });
+$('#backprop').onclick = e =>
+    task(e.target, 'Computing chain-rule gradients and central differences…', async () => {
+        backpropData = await api('backprop');
+        const b = backpropData;
+        $('#backprop-results')
+            .replaceChildren(table(
+                [ 'Parameter', 'Analytic gradient', 'Finite difference', 'After first update' ],
+                [ 'w', 'b', 'v', 'c' ].map(
+                    (p, i) => [p, b.gradient[i].toFixed(9), b.numerical[i].toFixed(9),
+                               b.updated[i].toFixed(9)])));
+        const p = document.createElement('p');
+        p.textContent = `Initial h=${b.hidden.toFixed(9)}; prediction=${
+            b.prediction.toFixed(9)}; loss=${b.initial_loss.toFixed(9)}. Max gradient error=${
+            b.max_gradient_error.toExponential(
+                3)} (${b.max_gradient_error <= 1e-5 ? 'PASS' : 'FAIL'}).`;
+        $('#backprop-results').append(p);
+        plot($('#loss-chart'), [ {
+                 name : 'Training loss (log scale)',
+                 color : '#236f9d',
+                 points :
+                     [ [ 0, b.initial_loss ], ...b.loss_after_updates.map((v, i) => [i + 1, v]) ]
+             } ],
+             'Update', 'Loss', true);
+        $('#loss-export').disabled = false;
+    });
+$('#loss-export').onclick = () => download(
+    'loss.csv', 'update,loss\n0,' + backpropData.initial_loss + '\n' +
+                    backpropData.loss_after_updates.map((v, i) => `${i + 1},${v}`).join('\n'));
+fetch('/api/health')
+    .then(r => r.json())
+    .then(d => {
+        $('#connection').textContent = d.backend + ' · ready';
+        status('C++ backend connected. Select a view to begin.');
+        drawScene();
+    })
+    .catch(e => {
+        $('#connection').textContent = 'Disconnected';
+        status('Backend unavailable: ' + e.message, true);
+    });

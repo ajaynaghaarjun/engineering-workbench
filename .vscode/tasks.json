@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run packaged Windows Workbench",
+      "type": "process",
+      "command": "${workspaceFolder}/Launch.exe",
+      "options": {"cwd": "${workspaceFolder}"},
+      "problemMatcher": [],
+      "presentation": {"reveal": "always", "panel": "dedicated"}
+    }
+  ]
+}
