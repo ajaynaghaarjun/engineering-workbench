@@ -25,7 +25,7 @@
             $('#mesh-selector').disabled = true;
             $('#mesh-selector').replaceChildren();
             $('#convergence-export').disabled = true;
-            form.elements.namedItem('elements').value = result.run.elements;
+            form.querySelector('[name="elements"]').value = result.run.elements;
             showThermal(result.run);
             $('#accuracy-result').replaceChildren(table(
                 ['Elements', 'Target (°C)', 'Predicted error (°C)', 'Measured error (°C)', 'Target met'],
@@ -48,7 +48,7 @@
     ]) {
         presets.append(control(name, null, () => {
             ['length', 'area', 'k', 'q', 'left', 'right', 'elements'].forEach((key, i) =>
-                form.elements.namedItem(key).value = values[i]);
+                form.querySelector('[name="' + key + '"]').value = values[i]);
             status(name + ' loaded into inputs. Run a solve to update the displayed results.');
         }));
     }

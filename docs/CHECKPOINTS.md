@@ -1,5 +1,9 @@
 # Verification checkpoints
 
+## Element/peak enhancement v1.5
+
+Added C++ element stiffness/load/nodal-contribution inspection, evidence JSON export and comparison of FEM and continuous analytical temperature maxima. 352 core checks and 29 API scenarios pass; Release/sanitizer/Windows cross-build checks pass. Review added stale-response invalidation, explicit form selectors and fresh package staging with complete manifest coverage. Browser automation remains disabled, so no new visual verification is claimed. Windows runtime and handwritten candidate work remain pending.
+
 ## Accuracy enhancement v1.4
 
 Added C++ mesh selection from a requested midpoint error, an actual FEM verification solve, evidence JSON export and three parameter presets. Review fixed flux overflow returning invalid JSON and suppressed convergence orders near roundoff. The suite now has 341 core checks and 26 API scenarios. New UI controls have not been visually exercised because browser automation is disabled in the current Work settings; syntax checks and backend scenarios cover their served script and numerical API. Windows runtime and candidate-authored deliverables remain pending.

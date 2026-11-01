@@ -64,4 +64,32 @@ await check('finite temperatures with overflowing flux fail with valid actionabl
   const response=await api('thermal','1e-200 1e-300 1e200 0 100 20 2');
   assert.equal(response.status,400);assert.match(response.data.error,/Heat flux exceeds/);
 });
+await check('C++ element matrices, source loads and shared-node assembly',async()=>{
+  const a=(await api('element','0 1 .0001 10 10000 100 20 20')).data;
+  const b=(await api('element','1 1 .0001 10 10000 100 20 20')).data;
+  assert.equal(a.stiffness_W_K.length,2);assert.ok(Math.abs(a.stiffness_W_K[0][0]-.02)<1e-15);
+  assert.equal(a.stiffness_W_K[0][1],-a.stiffness_W_K[0][0]);
+  assert.ok(Math.abs(a.load_W[0]-.025)<1e-15);
+  assert.ok(Math.abs(a.nodal_contributions_W[1]+b.nodal_contributions_W[0])<1e-12);
+  assert.ok(Math.abs(a.nodal_contributions_W[0]+.42)<1e-12);
+  assert.equal(a.parameters.heat_generation_W_m3,10000);
+  assert.equal((await fetch(base+'/element.js')).status,200);
+});
+await check('element index validation and custom-parameter inspection',async()=>{
+  for(const index of ['-1','20','1.5','abc','9999999'])assert.equal((await api('element',index+' 1 .0001 10 10000 100 20 20')).status,400);
+  const {data,status}=await api('element','9 2 .0001 10 0 -20 80 20');
+  assert.equal(status,200);assert.deepEqual(data.load_W,[0,0]);
+  assert.ok(Math.abs(data.heat_flux_W_m2+500)<1e-8);
+});
+await check('continuous analytical and mesh-based peak temperatures',async()=>{
+  const {data}=await api('thermal');
+  assert.ok(Math.abs(data.peak.analytical_x_m-.42)<1e-12);
+  assert.ok(Math.abs(data.peak.analytical_C-188.2)<1e-10);
+  assert.ok(Math.abs(data.peak.FEA_C-188)<1e-9);
+  assert.ok(Math.abs(data.peak.FEA_x_m-.4)<1e-12);
+  const linear=(await api('thermal','2 .0001 10 0 -20 80 20')).data;
+  assert.equal(linear.peak.analytical_C,80);assert.equal(linear.peak.analytical_x_m,2);
+  const cooling=(await api('thermal','1 .0001 10 -10000 20 20 20')).data;
+  assert.equal(cooling.peak.analytical_C,20);assert.equal(cooling.peak.analytical_x_m,0);
+});
 await mkdir('results/generated',{recursive:true});const output=new Date().toISOString()+'\n'+log.join('\n')+'\n';await writeFile('results/generated/integration.log',output);console.log(output);

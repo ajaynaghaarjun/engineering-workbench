@@ -94,7 +94,7 @@ std::string hardware(const std::string &body) {
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.4\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.5\"}";
     if (path == "/api/devices")
         return hardwareRegistry.discover();
     if (path == "/api/hardware-events")
@@ -127,6 +127,17 @@ std::string api(const std::string &path, const std::string &body) {
     }
     if (path == "/api/verify")
         return wb::verificationJson();
+    if (path == "/api/element") {
+        std::istringstream input(body);
+        std::string token, remaining;
+        if (!(input >> token) || token.empty() ||
+            token.find_first_not_of("0123456789") != std::string::npos || token.size() > 6)
+            throw std::runtime_error(
+                "Supply an integer element index (0 to N-1), then rod parameters.");
+        std::getline(input, remaining);
+        const auto r = rod(remaining);
+        return wb::elementJson(r, wb::element(r, static_cast<std::size_t>(std::stoul(token))));
+    }
     if (path == "/api/accuracy") {
         std::istringstream input(body);
         double target;
@@ -281,6 +292,7 @@ void handle(Socket client, fs::path root, unsigned port) {
                 {"/enhancements.css", {"web/enhancements.css", "text/css"}},
                 {"/evidence.js", {"web/evidence.js", "text/javascript; charset=utf-8"}},
                 {"/accuracy.js", {"web/accuracy.js", "text/javascript; charset=utf-8"}},
+                {"/element.js", {"web/element.js", "text/javascript; charset=utf-8"}},
                 {"/docs/Report.pdf", {"docs/Report.pdf", "application/pdf"}},
                 {"/docs/RUBRIC_REVIEW.md", {"docs/RUBRIC_REVIEW.md", "text/plain; charset=utf-8"}},
                 {"/docs/WINDOWS_ACCEPTANCE.md",

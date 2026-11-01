@@ -20,6 +20,19 @@ Thermal solve(const Rod &);
 std::string thermalJson(const Rod &, const Thermal &);
 // Uniform mesh selection for the supported constant-property rod, followed by a real FEM solve.
 std::string accuracyJson(Rod, double targetError);
+struct Peak {
+    double feX, feTemperature, analyticalX, analyticalTemperature;
+};
+// Input result must correspond to the supplied rod.
+Peak peak(const Rod &, const Thermal &);
+struct Element {
+    std::size_t index;
+    std::array<double, 2> x, temperature, load, balance;
+    std::array<double, 4> stiffness; // Row-major, W/K.
+    double flux;
+};
+Element element(const Rod &, std::size_t index);
+std::string elementJson(const Rod &, const Element &);
 struct Probe {
     double x, temperature, exactTemperature, error, flux;
     std::size_t element;

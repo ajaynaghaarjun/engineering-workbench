@@ -23,6 +23,39 @@ void rejects(std::function<void()> f) {
 int main() {
     try {
         double previous = 0;
+        const auto first = wb::element(wb::Rod{}, 0), next = wb::element(wb::Rod{}, 1);
+        check(std::abs(first.stiffness[0] - .02) < 1e-15 &&
+                  first.stiffness[1] == -first.stiffness[0] &&
+                  first.stiffness[2] == first.stiffness[1] &&
+                  first.stiffness[3] == first.stiffness[0],
+              "Element stiffness and symmetry");
+        check(std::abs(first.load[0] - .025) < 1e-15 && first.load[0] == first.load[1],
+              "Consistent half-element source loads");
+        check(std::abs(first.balance[1] + next.balance[0]) < 1e-12,
+              "Neighbouring element contributions assemble to zero at free nodes");
+        check(std::abs(first.balance[0] + .42) < 1e-12,
+              "Boundary element contribution is the signed reaction");
+        check(std::abs(first.flux + 3950) < 1e-8, "Element heat flux direction");
+        rejects([] { wb::element(wb::Rod{}, 20); });
+        auto peakRod = wb::Rod{};
+        auto hot = wb::peak(peakRod, wb::solve(peakRod));
+        check(std::abs(hot.analyticalX - .42) < 1e-12 &&
+                  std::abs(hot.analyticalTemperature - 188.2) < 1e-10,
+              "Analytical peak lies between nodes");
+        check(std::abs(hot.feX - .4) < 1e-12 && std::abs(hot.feTemperature - 188) < 1e-9,
+              "Piecewise linear FE peak is a nodal maximum");
+        peakRod.heat = 0;
+        peakRod.left = 20;
+        peakRod.right = 100;
+        hot = wb::peak(peakRod, wb::solve(peakRod));
+        check(hot.analyticalX == 1 && hot.analyticalTemperature == 100,
+              "Linear rod peaks at hotter boundary");
+        peakRod.heat = -10000;
+        peakRod.right = 20;
+        hot = wb::peak(peakRod, wb::solve(peakRod));
+        check(hot.analyticalX == 0 && hot.analyticalTemperature == 20,
+              "Convex cooling profile maximum remains a boundary");
+        rejects([] { wb::peak(wb::Rod{}, wb::Thermal{}); });
         check(wb::accuracyJson(wb::Rod{}, 1).find("\"elements\":12") != std::string::npos,
               "Accuracy selection rounds up to the smallest sufficient uniform mesh");
         rejects([] { wb::accuracyJson(wb::Rod{}, 0); });

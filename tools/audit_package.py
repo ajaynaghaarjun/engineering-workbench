@@ -11,12 +11,15 @@ with zipfile.ZipFile(archive) as z:
     assert all(not n.startswith('/') and '..' not in Path(n).parts for n in names)
     checks.append('PASS relative safe archive paths')
     required=['Launch.exe','CMakeLists.txt','README.md','.vscode/tasks.json','web/index.html','web/app.js','web/style.css','data/sample.stl','data/temperatures.csv','docs/Report.pdf','docs/AI_USE_LOG.md','docs/OWNERSHIP.md','results/WALKTHROUGH.html','version-control.bundle','docs/COMMIT_LOG.txt','tests/core_tests.exe']
-    required += ['web/enhancements.css','web/evidence.js','web/accuracy.js','docs/RUBRIC_REVIEW.md','docs/WINDOWS_ACCEPTANCE.md','docs/DEFENCE_GUIDE.md','src/verification.cpp']
+    required += ['web/enhancements.css','web/evidence.js','web/accuracy.js','web/element.js','docs/RUBRIC_REVIEW.md','docs/WINDOWS_ACCEPTANCE.md','docs/DEFENCE_GUIDE.md','src/verification.cpp']
     assert all(n in names for n in required)
     checks.append('PASS required package file inventory')
     assert z.read('Launch.exe')[:2]==b'MZ'
     checks.append('PASS Windows executable signature (not a Windows launch test)')
-    for name,sha in json.loads(z.read('SHA256SUMS.json')).items():
+    manifest=json.loads(z.read('SHA256SUMS.json'))
+    assert len(names)==len(set(names)), 'Duplicate archive entries'
+    assert set(names)==set(manifest)|{'SHA256SUMS.json'}, 'Manifest coverage mismatch'
+    for name,sha in manifest.items():
         assert hashlib.sha256(z.read(name)).hexdigest()==sha,name
     checks.append('PASS per-file SHA256 manifest')
     destination=Path(tempfile.mkdtemp(prefix='workbench-audit-'))

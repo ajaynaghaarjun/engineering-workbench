@@ -1,5 +1,11 @@
 # Unified Engineering Workbench
 
+## Version 1.5 - element assembly and peak inspection
+
+Thermal Analysis now shows the piecewise-linear FEM peak and the continuous analytical peak, including their locations. For the default 20-element rod these are 188 C at 0.40 m and 188.2 C at 0.42 m. The element inspector exposes the selected element's stiffness matrix (W/K), consistent source loads (W), nodal temperatures, signed nodal contributions and heat flux. Contributions from adjacent elements assemble at shared nodes; a single element's contribution is not a global residual. Element JSON includes the exact rod parameters.
+
+Review added stale-inspection protection when the displayed mesh changes, replaced potentially shadowed form property access with explicit selectors, and changed packaging to fresh staging with complete manifest coverage. New suite: 352 core checks and 29 API scenarios. The browser remains disabled in Work settings, so the new controls have syntax/backend checks but no visual workflow verification. Windows launch and the handwritten appendix remain outstanding.
+
 ## Version 1.4 - accuracy-driven mesh selection
 
 Thermal Analysis now accepts a target midpoint error. C++ selects a uniform mesh using |q|L²/(8kN²), performs a real FEM solve, and reports predicted and measured error with an explicit target-met result. Export its complete parameters/results as JSON. The tool supports heating, heat removal and zero-source rods, rejects targets beyond 200000 elements, and does not promise arbitrary accuracy in floating-point arithmetic. Three parameter presets populate inputs without changing existing results until another solve.

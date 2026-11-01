@@ -1,4 +1,4 @@
-2026-11-01T17:45:15.761Z
+2026-11-01T18:03:35.000Z
 PASS backend health
 PASS thermal numerical study
 PASS custom rod and export payload
@@ -25,3 +25,6 @@ PASS malformed HTTP lengths, duplicate headers and unsupported methods fail safe
 PASS accuracy-driven mesh selection measures achieved error and preserves parameters
 PASS accuracy selection rejects invalid, impossible and malformed targets
 PASS finite temperatures with overflowing flux fail with valid actionable JSON
+PASS C++ element matrices, source loads and shared-node assembly
+PASS element index validation and custom-parameter inspection
+PASS continuous analytical and mesh-based peak temperatures

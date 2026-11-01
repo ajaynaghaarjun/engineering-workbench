@@ -182,9 +182,63 @@ std::string probeJson(const Probe &p) {
       << ",\"heat_flux_W_m2\":" << p.flux << ",\"element_index\":" << p.element << '}';
     return s.str();
 }
+Peak peak(const Rod &r, const Thermal &t) {
+    require(r.elements >= 2 && r.elements <= 200000 && t.temperature.size() == r.elements + 1 &&
+                t.x.size() == t.temperature.size(),
+            "Peak inspection requires a matching solved rod.");
+    const auto i = static_cast<std::size_t>(
+        std::max_element(t.temperature.begin(), t.temperature.end()) - t.temperature.begin());
+    Peak p{t.x[i], t.temperature[i], r.left >= r.right ? 0.0 : r.length, std::max(r.left, r.right)};
+    // A concave quadratic can have an interior maximum. A convex/linear curve peaks at an end.
+    if (r.heat > 0) {
+        const long double stationary =
+            .5L * r.length + static_cast<long double>(r.conductivity) *
+                                 (static_cast<long double>(r.right) - r.left) / r.heat / r.length;
+        if (stationary > 0 && stationary < r.length) {
+            p.analyticalX = static_cast<double>(stationary);
+            p.analyticalTemperature = exact(r, p.analyticalX);
+        }
+    }
+    require(finite(p.analyticalTemperature), "Peak temperature exceeds numerical range.");
+    return p;
+}
+Element element(const Rod &r, std::size_t index) {
+    require(index < r.elements, "Element index must be between 0 and N-1.");
+    const auto t = solve(r);
+    const double h = r.length / r.elements, k = r.conductivity * r.area / h,
+                 f = r.heat * r.area * h / 2;
+    const double internal = k * (t.temperature[index] - t.temperature[index + 1]);
+    Element e{index,
+              {t.x[index], t.x[index + 1]},
+              {t.temperature[index], t.temperature[index + 1]},
+              {f, f},
+              {internal - f, -internal - f},
+              {k, -k, -k, k},
+              -r.conductivity * (t.temperature[index + 1] - t.temperature[index]) / h};
+    require(finite(e.balance[0]) && finite(e.balance[1]),
+            "Element balance exceeds numerical range.");
+    return e;
+}
+std::string elementJson(const Rod &r, const Element &e) {
+    auto s = stream();
+    s << "{\"element_index\":" << e.index << ",\"elements\":" << r.elements << ",\"x_m\":["
+      << e.x[0] << ',' << e.x[1] << "],\"temperature_C\":[" << e.temperature[0] << ','
+      << e.temperature[1] << "],\"stiffness_W_K\":[[" << e.stiffness[0] << ',' << e.stiffness[1]
+      << "],[" << e.stiffness[2] << ',' << e.stiffness[3] << "]],\"load_W\":[" << e.load[0] << ','
+      << e.load[1] << "],\"nodal_contributions_W\":[" << e.balance[0] << ',' << e.balance[1]
+      << "],\"heat_flux_W_m2\":" << e.flux << ",\"parameters\":{\"length_m\":" << r.length
+      << ",\"area_m2\":" << r.area << ",\"conductivity_W_mK\":" << r.conductivity
+      << ",\"heat_generation_W_m3\":" << r.heat << ",\"left_C\":" << r.left
+      << ",\"right_C\":" << r.right << "}}";
+    return s.str();
+}
 std::string thermalJson(const Rod &r, const Thermal &t) {
     auto s = stream();
+    const auto p = peak(r, t);
     s << "{\"elements\":" << r.elements << ",\"midpoint_error_C\":" << t.midpointError
+      << ",\"peak\":{\"FEA_x_m\":" << p.feX << ",\"FEA_C\":" << p.feTemperature
+      << ",\"analytical_x_m\":" << p.analyticalX << ",\"analytical_C\":" << p.analyticalTemperature
+      << "}"
       << ",\"parameters\":{\"length_m\":" << r.length << ",\"area_m2\":" << r.area
       << ",\"conductivity_W_mK\":" << r.conductivity << ",\"heat_generation_W_m3\":" << r.heat
       << ",\"left_C\":" << r.left << ",\"right_C\":" << r.right << "},\"nodes\":[";

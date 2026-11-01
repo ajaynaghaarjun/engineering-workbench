@@ -93,7 +93,7 @@
         ],
         [
             'Thermal FEA and adoption', 14,
-            'Assembly, prescribed boundaries, midpoint errors, convergence, energy/residual checks and explanations.'
+            'Assembly inspector, FEM/analytical peaks, boundaries, midpoint errors, convergence, energy/residual checks and explanations.'
         ],
         [
             'CAD / ANSYS visualization', 10,

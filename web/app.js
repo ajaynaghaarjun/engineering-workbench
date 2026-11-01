@@ -712,6 +712,15 @@ function renderDiagnostics(run) {
          'Position x (m)', 'Flux (W/m²)');
     $('#midpoint-export').disabled = false;
     $('#analysis-export').disabled = false;
+    const peakBox = $('#peak-summary');
+    if (peakBox && run.peak) {
+        const p = run.peak;
+        peakBox.replaceChildren(table(['Peak', 'Position (m)', 'Temperature (°C)'], [
+            ['Piecewise-linear FEM (nodal maximum)', p.FEA_x_m, p.FEA_C],
+            ['Analytical continuous maximum', p.analytical_x_m, p.analytical_C]
+        ]));
+    }
+    document.dispatchEvent(new CustomEvent('workbench:thermal-result', {detail: run}));
 }
 let nodePage = 0, filteredNodes = [], hardwareEventData = null;
 function renderNodeExplorer() {

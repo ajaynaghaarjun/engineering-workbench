@@ -82,7 +82,7 @@ std::string verificationJson() {
 #endif
     std::ostringstream s;
     s << std::setprecision(17)
-      << "{\"version\":\"1.4\",\"all_passed\":" << (passed ? "true" : "false")
+      << "{\"version\":\"1.5\",\"all_passed\":" << (passed ? "true" : "false")
       << ",\"platform\":" << quote(platform) << ",\"architecture\":" << quote(architecture)
       << ",\"logical_cpus\":" << std::thread::hardware_concurrency() << ",\"checks\":[";
     for (std::size_t i = 0; i < checks.size(); ++i) {

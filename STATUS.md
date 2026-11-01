@@ -18,7 +18,15 @@ Implementation and verification completed on the available Mac environment. Wind
 - PASS: zero-source non-default boundary case.
 - PASS: gradient central differences and training convergence.
 
-## Latest verification (v1.4)
+## Latest verification (v1.5)
+
+- Element stiffness/load/contribution inspection and mesh-versus-analytical peak temperatures added in C++ and UI.
+- 352 core checks and 29 HTTP scenarios pass, alongside Release, sanitizer and Windows cross-build checks.
+- Packaging now starts with a fresh staging directory; the auditor checks complete manifest coverage and duplicate entries.
+- UI review replaces potentially shadowed form properties and discards stale element responses after mesh changes.
+- New UI controls remain visually unverified because local browser automation is disabled in Work settings.
+
+## Previous verification (v1.4)
 
 - Accuracy-driven uniform mesh selection and real FEM error verification added, with JSON evidence export and three input presets.
 - 341 core checks and 26 API scenarios include unsupported accuracy targets and overflowing heat-flux rejection.

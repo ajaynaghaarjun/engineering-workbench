@@ -1,6 +1,12 @@
-# Rubric review - version 1.4
+# Rubric review - version 1.5
 
-## Latest enhancement review
+## Latest inspection and packaging review
+
+The thermal view now exposes C++ element stiffness matrices, consistent loads, signed nodal contributions and flux. Independent checks verify the default matrix/load, boundary reaction and cancellation of neighbouring contributions at an interior node. This supports the thermal formulation and candidate explanation criteria. Peak inspection compares the FEM nodal maximum with the continuous analytical maximum, including boundary-only maxima for linear and cooling profiles. For the default mesh, 188 C at 0.40 m is distinct from the analytical 188.2 C at 0.42 m.
+
+Code review rectified potentially shadowed form collection access, invalidated old element evidence after a mesh change, and replaced merge-based packaging with fresh staging so removed files cannot persist. The archive auditor now rejects duplicate entries and incomplete hash coverage. Verification: 352 core checks, 29 HTTP scenarios, sanitizer checks and Windows cross-compilation. New browser controls have not been visually exercised because local browser automation is disabled. Delivery gates and candidate-authored evidence gaps below remain unchanged; extra features do not clear them.
+
+## Prior accuracy enhancement review (v1.4)
 
 Accuracy-driven mesh selection extends the thermal/UI evidence: C++ selects a uniform mesh from |q|L²/(8kN²), runs the FEM solver, and reports measured target attainment. It handles negative/zero heat sources and rejects targets beyond the supported mesh limit. Input presets and JSON evidence export support reproducible exploration. This supplements the required four-mesh study.
 

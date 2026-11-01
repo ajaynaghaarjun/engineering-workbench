@@ -17,6 +17,8 @@ These are study prompts and verified explanations, not a claim that the candidat
 
 ## Small changes to practise
 
+- Inspect element 0: its diagonal stiffness is 0.02 W/K, each source load is 0.025 W, and its left nodal contribution is -0.42 W. Explain why adjacent element contributions cancel at an unconstrained interior node.
+- Explain why the analytical maximum is at x=0.42 m while the 20-element piecewise-linear solution reaches its maximum at the x=0.40 m node. The derivative of the analytical profile vanishes at the continuous peak.
 - Change the left/right temperatures and explain how the zero-source linear profile changes.
 - Change q and predict the midpoint error and generated power before running the app.
 - Add one negative CSV test and explain why the parser should reject it.
