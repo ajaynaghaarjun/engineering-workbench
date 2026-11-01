@@ -1,5 +1,9 @@
 # Verification checkpoints
 
+## Thermal assessment v1.7
+
+Added continuous-peak limit assessment, sampled profiles, flags, plots/filter and exports; saved scenarios gain rename/duplicate. One solved field is reused across station interpolation. Review fixed internal-node flux selecting the wrong side under division roundoff and added a regression at x=0.3 m. 372 core checks and 36 HTTP scenarios pass; sanitizers and Windows cross-build pass. New controls remain visually unverified because browser automation is disabled; delivery/candidate work remains pending.
+
 ## Scenario workspace v1.6
 
 Added bounded C++ sweeps and comparison with independent physical scaling tests. Added scenario-library actions, exports, overlays, input-draft recovery, notes, PNG/fullscreen/print controls, high contrast and keyboard navigation. 363 core checks and 33 API scenarios pass; Release/sanitizer/Windows cross-build checks pass. Source review corrected export references, storage error messages and hidden-form validation feedback. Browser controls remain visually unverified because automation is disabled; no new screenshot or Windows success is claimed.

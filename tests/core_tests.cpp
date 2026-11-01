@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "inspection.hpp"
 #include "studies.hpp"
 #include "verification.hpp"
 #include <cmath>
@@ -24,6 +25,25 @@ void rejects(std::function<void()> f) {
 int main() {
     try {
         double previous = 0;
+        const auto assessment = wb::inspectProfile(wb::Rod{}, 188.1, 21);
+        check(!assessment.withinLimit && std::abs(assessment.margin + .1) < 1e-10,
+              "Continuous peak exceeds limit even when mesh nodes do not");
+        check(assessment.stations.size() == 21 && assessment.stations.front().temperature == 100 &&
+                  assessment.stations.back().temperature == 20,
+              "Profile stations include exact prescribed endpoints");
+        check(wb::inspectProfile(wb::Rod{}, 200, 2).withinLimit,
+              "Global assessment is independent of sparse station sampling");
+        check(std::abs(wb::inspectProfile(wb::Rod{}, 180, 41).stations[21].error - .3125) < 1e-9,
+              "Reused solution gives independent midpoint interpolation error");
+        const auto nodeProbe = wb::probe(wb::Rod{}, .3);
+        check(nodeProbe.element == 6 && std::abs(nodeProbe.flux + 950) < 1e-7,
+              "Internal node flux consistently uses right element despite division roundoff");
+        rejects([] { wb::inspectProfile(wb::Rod{}, 200, 1); });
+        rejects([] { wb::inspectProfile(wb::Rod{}, 200, 102); });
+        rejects([] { wb::inspectProfile(wb::Rod{}, std::numeric_limits<double>::infinity(), 21); });
+        auto oversizedProfile = wb::Rod{};
+        oversizedProfile.elements = 10001;
+        rejects([&] { wb::inspectProfile(oversizedProfile, 200, 21); });
         auto sweep = wb::sweep(wb::Rod{}, "k", .5, 2, 3);
         check(sweep.size() == 3 && sweep.front().value == 5 && sweep.back().value == 20,
               "Sweep uses requested multipliers and property");

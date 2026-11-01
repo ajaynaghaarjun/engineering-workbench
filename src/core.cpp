@@ -161,19 +161,31 @@ std::string accuracyJson(Rod r, double targetError) {
 Probe probe(const Rod &r, double x) {
     require(finite(x) && x >= 0 && x <= r.length,
             "Probe position must lie within the rod (0 to L).");
-    const auto t = solve(r);
+    return probe(r, solve(r), x);
+}
+Probe probe(const Rod &r, const Thermal &t, double x) {
+    require(finite(x) && x >= 0 && x <= r.length,
+            "Probe position must lie within the rod (0 to L).");
+    require(r.elements >= 2 && r.elements <= 200000 && t.temperature.size() == r.elements + 1 &&
+                t.x.size() == t.temperature.size(),
+            "Probe inspection requires a matching solved rod.");
     const double h = r.length / r.elements;
-    const auto element = std::min(r.elements - 1, static_cast<std::size_t>(x / h));
+    double coordinate = x / h;
+    const double nearest = std::round(coordinate);
+    // Internal-node flux uses the right element; division roundoff must not select the left one.
+    if (std::abs(coordinate - nearest) <=
+        8 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(coordinate)))
+        coordinate = nearest;
+    const auto element = std::min(r.elements - 1, static_cast<std::size_t>(coordinate));
     const double local = x == r.length ? 1.0 : std::clamp((x - t.x[element]) / h, 0.0, 1.0);
     const double temperature =
         (1 - local) * t.temperature[element] + local * t.temperature[element + 1];
     const double analytical = exact(r, x);
-    return {x,
-            temperature,
-            analytical,
-            std::abs(temperature - analytical),
-            -r.conductivity * (t.temperature[element + 1] - t.temperature[element]) / h,
-            element};
+    const double error = std::abs(temperature - analytical),
+                 flux = -r.conductivity * (t.temperature[element + 1] - t.temperature[element]) / h;
+    require(finite(temperature) && finite(analytical) && finite(error) && finite(flux),
+            "Probe calculation exceeds numerical range.");
+    return {x, temperature, analytical, error, flux, element};
 }
 std::string probeJson(const Probe &p) {
     auto s = stream();

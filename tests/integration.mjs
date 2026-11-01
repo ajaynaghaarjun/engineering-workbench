@@ -125,4 +125,26 @@ await check('workspace assets are bundled and served offline',async()=>{
   for(const path of ['/workspace.js','/workspace.css','/docs/WORKSPACE_GUIDE.md']) assert.equal((await fetch(base+path)).status,200);
   const html=await fetch(base+'/').then(r=>r.text());assert.match(html,/workspace.js/);assert.match(html,/workspace.css/);
 });
+await check('temperature assessment catches peaks between sampled mesh nodes',async()=>{
+  const {data,status}=await api('profile','188.1 21 1 .0001 10 10000 100 20 20');
+  assert.equal(status,200);assert.equal(data.within_user_limit,false);
+  assert.ok(Math.abs(data.margin_C+.1)<1e-10);assert.equal(data.stations.length,21);
+  assert.ok(data.stations.every(s=>!s.FEA_exceeds_limit&&!s.analytical_exceeds_limit));
+  assert.equal(data.stations[0].FEA_C,100);assert.equal(data.stations.at(-1).FEA_C,20);
+  assert.equal((await api('profile','200 2 1 .0001 10 10000 100 20 20')).data.within_user_limit,true);
+});
+await check('profile error, per-station flags and right-element node convention',async()=>{
+  const {data}=await api('profile','180 41 1 .0001 10 10000 100 20 20');
+  assert.ok(Math.abs(data.stations[21].absolute_error_C-.3125)<1e-9);
+  assert.ok(data.stations.some(s=>s.analytical_exceeds_limit));
+  const node=(await api('probe','.3 1 .0001 10 10000 100 20 20')).data;
+  assert.equal(node.element_index,6);assert.ok(Math.abs(node.heat_flux_W_m2+950)<1e-7);
+  const cooling=(await api('profile','25 11 1 .0001 10 -10000 20 20 20')).data;
+  assert.equal(cooling.within_user_limit,true);assert.equal(cooling.analysis.peak.analytical_C,20);
+});
+await check('assessment limits and offline profile asset',async()=>{
+  for(const prefix of ['180 1','180 102','180 2.5','NaN 21'])assert.equal((await api('profile',prefix+' 1 .0001 10 10000 100 20 20')).status,400);
+  assert.equal((await api('profile','180 21 1 .0001 10 10000 100 20 10001')).status,400);
+  assert.equal((await fetch(base+'/profile.js')).status,200);
+});
 await mkdir('results/generated',{recursive:true});const output=new Date().toISOString()+'\n'+log.join('\n')+'\n';await writeFile('results/generated/integration.log',output);console.log(output);

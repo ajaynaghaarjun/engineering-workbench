@@ -1,4 +1,10 @@
-# Rubric review - version 1.6
+# Rubric review - version 1.7
+
+## Latest temperature-assessment review
+
+The workspace now assesses a user-defined upper temperature limit against the continuous analytical maximum, not only the sampled/nodal values. The default N=20 rod with a 188.1 C limit demonstrates the distinction: all nodal samples are below the limit while the continuous 188.2 C peak exceeds it. C++ returns margin, 2-101 uniformly sampled temperatures/errors/fluxes and pointwise flags from one solved field. Plots, filtering and evidence exports supplement thermal/UI criteria. Saved scenarios can be renamed and duplicated.
+
+Review found that floating-point division could choose the left element at an internal-node probe, contradicting the desired right-element flux convention. Snapping integer element coordinates within roundoff tolerance fixes this; node 0.3 m now uses element 6 and -950 W/m2 for the default rod. Regression tests verify the convention, endpoint temperatures, sparse sampling, cooling cases, limit flags and invalid/resource-limited requests. Current suite: 372 core checks and 36 API scenarios; sanitizers and Windows cross-build pass. New controls remain visually unverified. A model-limit result is not physical safety certification, Windows acceptance or a company score. Remaining rubric gates below are unchanged.
 
 ## Scenario workspace review
 

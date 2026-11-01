@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "hardware.hpp"
+#include "inspection.hpp"
 #include "studies.hpp"
 #include "verification.hpp"
 #include <algorithm>
@@ -95,7 +96,7 @@ std::string hardware(const std::string &body) {
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.6\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.7\"}";
     if (path == "/api/devices")
         return hardwareRegistry.discover();
     if (path == "/api/hardware-events")
@@ -128,6 +129,17 @@ std::string api(const std::string &path, const std::string &body) {
     }
     if (path == "/api/verify")
         return wb::verificationJson();
+    if (path == "/api/profile") {
+        std::istringstream input(body);
+        double limit;
+        int stations;
+        std::string remaining;
+        if (!(input >> limit >> stations) || stations < 2 || stations > 101)
+            throw std::runtime_error("Supply a finite temperature limit, integer stations (2-101), "
+                                     "then rod parameters.");
+        std::getline(input, remaining);
+        return wb::profileJson(rod(remaining), limit, static_cast<std::size_t>(stations));
+    }
     if (path == "/api/sweep") {
         std::istringstream input(body);
         std::string parameter, remaining;
@@ -314,6 +326,7 @@ void handle(Socket client, fs::path root, unsigned port) {
                 {"/element.js", {"web/element.js", "text/javascript; charset=utf-8"}},
                 {"/workspace.js", {"web/workspace.js", "text/javascript; charset=utf-8"}},
                 {"/workspace.css", {"web/workspace.css", "text/css"}},
+                {"/profile.js", {"web/profile.js", "text/javascript; charset=utf-8"}},
                 {"/docs/Report.pdf", {"docs/Report.pdf", "application/pdf"}},
                 {"/docs/RUBRIC_REVIEW.md", {"docs/RUBRIC_REVIEW.md", "text/plain; charset=utf-8"}},
                 {"/docs/WINDOWS_ACCEPTANCE.md",

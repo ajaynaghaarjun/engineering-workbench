@@ -69,6 +69,20 @@
         if (refresh()) status('Selected scenario removed from the local library.');
     }));
     bar.append(control('Export scenario library', 'library-export', () => download('saved_scenarios.json', JSON.stringify({exported_at:new Date().toISOString(),scenarios:saved}, null, 2), 'application/json')));
+    bar.append(control('Rename selected', 'scenario-rename', () => {
+        const item=saved.find(s=>s.id===picker.value);
+        if (!item || !name.value.trim()) return status('Select a scenario and enter its new name.',true);
+        item.name=name.value.trim(); const id=item.id;
+        if (refresh()) status('Scenario renamed. Previously exported comparisons retain their original labels.');
+        picker.value=id;
+    }), control('Duplicate selected', 'scenario-duplicate', () => {
+        const item=saved.find(s=>s.id===picker.value);
+        if (!item) return status('Select a saved scenario to duplicate.',true);
+        if (saved.length>=12) return status('The library is full. Delete a scenario first.',true);
+        const copy={id:crypto.randomUUID(),name:(name.value.trim() || item.name+' copy').slice(0,60),values:[...item.values],captured_at:new Date().toISOString()};
+        saved.push(copy); const persisted=refresh();picker.value=copy.id;
+        if (persisted) status('Scenario duplicated. Restore its inputs to make changes.');
+    }));
     library.append(bar, librarySummary); view.append(library);
 
     const comparePanel = create('section'); comparePanel.className = 'inspection-panel';

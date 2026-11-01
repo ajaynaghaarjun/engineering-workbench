@@ -18,7 +18,15 @@ Implementation and verification completed on the available Mac environment. Wind
 - PASS: zero-source non-default boundary case.
 - PASS: gradient central differences and training convergence.
 
-## Latest verification (v1.6)
+## Latest verification (v1.7)
+
+- Added continuous-peak temperature-limit assessment, signed margin, uniform station sampling, per-station exceedance flags, plots/filter and CSV/JSON/PNG exports.
+- Added saved-scenario rename and duplicate actions.
+- Reused one solved field for all profile stations. Fixed one-sided internal-node flux selection under division roundoff.
+- 372 core checks and 36 API scenarios pass, including a peak-between-nodes limit regression; sanitizers and Windows cross-build pass.
+- New controls remain visually unverified because browser automation is disabled. Windows launch and handwritten appendix remain pending.
+
+## Previous verification (v1.6)
 
 - Added C++ parameter sweeps and two-case comparison in a separate studies module.
 - Added a scenario library, restore/re-run/delete/export, input draft recovery, local experiment notes, chart PNG/fullscreen controls, active-view printing, high contrast and keyboard navigation.

@@ -1,3 +1,4 @@
+a2a9d7b 2026-11-02T01:28:47+05:30 Add scenario workspace, C++ sweeps and comparisons, and presentation tools
 4f7dd53 2026-11-01T23:37:15+05:30 Expose FEM element assembly and continuous peak temperatures; stage clean releases
 1cc6e85 2026-11-01T23:17:04+05:30 Add accuracy-driven FEM mesh selection and reject nonfinite heat flux
 929d90a 2026-11-01T20:16:20+05:30 Review all rubric criteria and add reproducible C++ verification evidence view

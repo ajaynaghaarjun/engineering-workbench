@@ -1,5 +1,11 @@
 # Unified Engineering Workbench
 
+## Version 1.7 - sampled profiles and temperature-limit assessment
+
+The Scenario workspace now assesses the displayed rod against a user-defined upper temperature limit. C++ compares the limit to the continuous analytical maximum, reports the signed margin, and samples 2-101 uniform stations from one solved field. Each station includes FEM/exact temperature, error, flux, element index and independent FEM/analytical exceedance flags. Temperature/limit and error plots, an exceeding-stations filter, CSV/JSON export and error-plot PNG export are included. Limits apply to this steady 1D model, not a physical safety certification. Maximum mesh: 10000 elements for this inspection.
+
+The library also supports Rename selected and Duplicate selected. Review corrected internal-node flux selection: roundoff near an integer element coordinate now consistently selects the right element, with the last element at x=L. A shared solved-field probe avoids repeated solves when sampling. Verification: 372 core checks and 36 API scenarios, sanitizers and Windows cross-build. New UI controls remain visually unverified because browser automation is disabled. Windows runtime and candidate-authored deliverables remain pending.
+
 ## Version 1.6 - scenario workspace and exploration tools
 
 - C++ parameter sweeps vary conductivity, heat source, length or area over 2-9 evenly spaced multipliers; each case runs the real FEM solver. Results include continuous peak/location, interpolation error, power and energy balance, with plots and CSV/JSON export.

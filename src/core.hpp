@@ -38,6 +38,8 @@ struct Probe {
     std::size_t element;
 };
 Probe probe(const Rod &, double x);
+// Reuse a matching solved field for multi-point inspection.
+Probe probe(const Rod &, const Thermal &, double x);
 std::string probeJson(const Probe &);
 struct Vertex {
     double x, y, z;

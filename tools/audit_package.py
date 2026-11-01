@@ -14,6 +14,7 @@ with zipfile.ZipFile(archive) as z:
     required += ['web/enhancements.css','web/evidence.js','web/accuracy.js','web/element.js','docs/RUBRIC_REVIEW.md','docs/WINDOWS_ACCEPTANCE.md','docs/DEFENCE_GUIDE.md','src/verification.cpp']
     required += ['web/workspace.js','web/workspace.css','src/studies.hpp','src/studies.cpp']
     required += ['docs/WORKSPACE_GUIDE.md']
+    required += ['src/inspection.hpp','src/inspection.cpp','web/profile.js']
     assert all(n in names for n in required)
     checks.append('PASS required package file inventory')
     assert z.read('Launch.exe')[:2]==b'MZ'
