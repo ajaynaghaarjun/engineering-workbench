@@ -7,12 +7,24 @@ await check('backend health',async()=>assert.equal((await fetch(base+'/api/healt
 await check('thermal numerical study',async()=>{const {data}=await api('study');assert.equal(data.runs.length,4);for(const r of data.runs){assert.ok(Math.abs(r.midpoint_error_C-125/r.elements**2)<1e-8);assert.equal(r.nodes[0][1],100);assert.equal(r.nodes.at(-1)[1],20);}});
 await check('custom rod and export payload',async()=>{const {status,data}=await api('thermal','2 0.0001 10 0 -20 80 20');assert.equal(status,200);assert.ok(Math.abs(data.nodes[10][1]-30)<1e-9);});
 await check('reject invalid thermal parameter',async()=>assert.equal((await api('thermal','1 0.0001 0 10000 100 20 20')).status,400));
-await check('bundled STL import',async()=>{const text=await readFile('data/sample.stl','utf8');assert.equal((await api('stl',text)).data.vertices.length,12);});
-await check('bundled CSV import',async()=>{const text=await readFile('data/temperatures.csv','utf8');assert.equal((await api('csv',text)).data.nodes.length,10);});
+await check('bundled STL import',async()=>{const text=await readFile('data/sample.stl','utf8');const d=(await api('stl',text)).data;assert.equal(d.vertices.length,12);assert.equal(d.summary.triangles,4);assert.ok(Math.abs(d.summary.surface_area_source_units2-(1.5+Math.sqrt(3)/2))<1e-12);assert.deepEqual(d.summary.bounds_max,[1,1,1]);});
+await check('bundled CSV import',async()=>{const text=await readFile('data/temperatures.csv','utf8');const d=(await api('csv',text)).data;assert.equal(d.nodes.length,10);assert.equal(d.summary.min_temperature_C,20);assert.equal(d.summary.max_temperature_C,185);});
 await check('reject empty and malformed imports',async()=>{for(const path of ['stl','csv'])assert.equal((await api(path,'')).status,400);assert.equal((await api('csv','node_id,x_m,y_m,z_m,temperature_C\n1,0,0,0,NaN')).status,400);});
 await check('parallel agreement and raw repetitions',async()=>{const {data}=await api('benchmark','100 100');for(const r of data.rows){assert.ok(r.max_difference_C<=1e-8);assert.equal(r.samples_s.length,5);}});
 await check('all three mock adapters and timeout recovery',async()=>{for(const device of ['microcontroller','fpga','jtag']){assert.equal((await api('hardware',device+' connect')).data.connected,true);assert.equal((await api('hardware',device+' telemetry')).data.telemetry.temperature_C,32.5);assert.equal((await api('hardware',device+' timeout')).data.connected,false);assert.equal((await api('hardware',device+' telemetry')).status,400);assert.equal((await api('hardware',device+' connect')).data.connected,true);assert.equal((await api('hardware',device+' disconnect')).data.connected,false);}});
 await check('backpropagation gradient and loss verification',async()=>{const {data}=await api('backprop');assert.ok(data.max_gradient_error<=1e-5);assert.equal(data.loss_after_updates.length,101);assert.ok(data.loss_after_updates.at(-1)<1e-12);});
 await check('path traversal rejected',async()=>assert.equal((await fetch(base+'/%2e%2e/CMakeLists.txt')).status,400));
 await check('cross-origin API request rejected',async()=>assert.equal((await fetch(base+'/api/thermal',{method:'POST',headers:{Origin:'https://example.com'},body:''})).status,400));
+await check('thermal heat flux and energy conservation',async()=>{const {data}=await api('thermal');assert.equal(data.flux.length,20);assert.equal(data.parameters.length_m,1);for(const [x,flux,flow] of data.flux){assert.ok(Math.abs(flux-(-4200+10000*x))<1e-7);assert.ok(Math.abs(flow-flux*1e-4)<1e-10);}assert.ok(data.diagnostics.energy_imbalance_W<1e-9);assert.ok(data.diagnostics.max_residual_W<1e-9);assert.ok(Math.abs(data.diagnostics.left_outflow_W-.42)<1e-9);assert.ok(Math.abs(data.diagnostics.right_outflow_W-.58)<1e-9);});
+await check('custom-parameter convergence study',async()=>{const {data}=await api('custom-study','2 0.002 15 2000 30 80 20');assert.equal(data.runs.length,4);for(const r of data.runs){assert.equal(r.nodes[0][1],30);assert.equal(r.nodes.at(-1)[1],80);assert.ok(Math.abs(r.midpoint_error_C-2000/(8*15)*(2/r.elements)**2)<1e-8);assert.ok(r.diagnostics.energy_imbalance_W<1e-8);}});
+await check('live progress, responsive health, safe cancellation and restart',async()=>{
+  const running=api('benchmark','2000 5000');let state;
+  for(let i=0;i<100;i++){state=(await api('progress')).data;if(state.running)break;await new Promise(r=>setTimeout(r,10));}
+  assert.equal(state.running,true);assert.ok(state.total>0);assert.ok(state.completed<=state.total);
+  assert.equal((await fetch(base+'/api/health')).status,200);
+  assert.equal((await api('cancel')).data.requested,true);
+  const cancelled=await running;assert.equal(cancelled.status,400);assert.match(cancelled.data.error,/cancelled safely/);assert.equal(cancelled.data.rows,undefined);
+  assert.equal((await api('progress')).data.running,false);
+  assert.equal((await api('benchmark','20 40')).status,200);
+});
 await mkdir('results/generated',{recursive:true});const output=new Date().toISOString()+'\n'+log.join('\n')+'\n';await writeFile('results/generated/integration.log',output);console.log(output);

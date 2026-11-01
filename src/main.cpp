@@ -39,6 +39,8 @@ void closeSocket(Socket s) {
 namespace fs = std::filesystem;
 namespace {
 std::mutex computeMutex, hardwareMutex;
+std::atomic<bool> benchmarkActive{false}, benchmarkCancel{false};
+std::atomic<std::size_t> benchmarkCompleted{0}, benchmarkTotal{0};
 std::map<std::string, bool> devices{{"microcontroller", false}, {"fpga", false}, {"jtag", false}};
 std::string read(const fs::path &p) {
     std::ifstream f(p, std::ios::binary);
@@ -66,11 +68,11 @@ wb::Rod rod(const std::string &body) {
     r.elements = static_cast<std::size_t>(n);
     return r;
 }
-std::string study() {
+std::string study(wb::Rod parameters = {}) {
     std::string s = "{\"runs\":[";
     bool comma = false;
     for (int n : {10, 20, 40, 80}) {
-        wb::Rod r;
+        wb::Rod r = parameters;
         r.elements = n;
         if (comma)
             s += ',';
@@ -105,7 +107,17 @@ std::string hardware(const std::string &body) {
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.0\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.1\"}";
+    if (path == "/api/progress")
+        return "{\"running\":" + std::string(benchmarkActive ? "true" : "false") +
+               ",\"cancel_requested\":" + (benchmarkCancel ? "true" : "false") +
+               ",\"completed\":" + std::to_string(benchmarkCompleted.load()) +
+               ",\"total\":" + std::to_string(benchmarkTotal.load()) + "}";
+    if (path == "/api/cancel") {
+        if (benchmarkActive)
+            benchmarkCancel = true;
+        return "{\"requested\":" + std::string(benchmarkActive ? "true" : "false") + "}";
+    }
     if (path == "/api/stl")
         return wb::geometryJson(wb::parseStl(body));
     if (path == "/api/csv")
@@ -124,13 +136,31 @@ std::string api(const std::string &path, const std::string &body) {
     }
     if (path == "/api/study")
         return study();
+    if (path == "/api/custom-study")
+        return study(rod(body));
     if (path == "/api/benchmark") {
         std::istringstream in(body);
         std::size_t count = 1000, n = 200;
         std::string extra;
         if (!(in >> count >> n) || in >> extra)
             throw std::runtime_error("Supply integer case count and mesh size.");
-        return wb::benchmarkJson(wb::benchmark(count, n), count, n);
+        unsigned workerCounts = 1, cpus = std::max(1u, std::thread::hardware_concurrency());
+        if (cpus >= 2)
+            ++workerCounts;
+        if (cpus >= 4)
+            ++workerCounts;
+        benchmarkCompleted = 0;
+        benchmarkTotal = count * (1 + 6 * workerCounts);
+        benchmarkCancel = false;
+        benchmarkActive = true;
+        try {
+            auto rows = wb::benchmark(count, n, &benchmarkCancel, &benchmarkCompleted);
+            benchmarkActive = false;
+            return wb::benchmarkJson(rows, count, n);
+        } catch (...) {
+            benchmarkActive = false;
+            throw;
+        }
     }
     throw std::runtime_error("Unknown API endpoint.");
 }
@@ -216,6 +246,7 @@ void handle(Socket client, fs::path root, unsigned port) {
                 {"/", {"web/index.html", "text/html; charset=utf-8"}},
                 {"/app.js", {"web/app.js", "text/javascript; charset=utf-8"}},
                 {"/style.css", {"web/style.css", "text/css"}},
+                {"/enhancements.css", {"web/enhancements.css", "text/css"}},
                 {"/sample.stl", {"data/sample.stl", "text/plain"}},
                 {"/temperatures.csv", {"data/temperatures.csv", "text/csv"}}};
             if (!allowed.count(path))

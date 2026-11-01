@@ -1,4 +1,4 @@
-2026-11-01T12:22:16.280Z
+2026-11-01T13:01:10.558Z
 PASS backend health
 PASS thermal numerical study
 PASS custom rod and export payload
@@ -11,3 +11,6 @@ PASS all three mock adapters and timeout recovery
 PASS backpropagation gradient and loss verification
 PASS path traversal rejected
 PASS cross-origin API request rejected
+PASS thermal heat flux and energy conservation
+PASS custom-parameter convergence study
+PASS live progress, responsive health, safe cancellation and restart

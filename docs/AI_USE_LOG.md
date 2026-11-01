@@ -34,4 +34,8 @@ FEA results are compared to the analytical expression and the expected interpola
 
 ## Candidate review still needed
 
+## Enhancement request
+
+The candidate asked to add more features and enhance the project after the initial package. Version 1.1 adds numerical diagnostics, custom studies, richer inspection/exports, bounded cancellation and progress. New checks independently verify boundary heat flow/energy balance, mesh area/bounds, temperature summaries, live cancellation and restart. The original archive was preserved as a fallback. No physical hardware or Windows-runtime success was added to the claims.
+
 The candidate must understand and defend the source, confirm actual Windows launch, write the handwritten appendix, and confirm ownership and actual personal effort. These actions have not been invented or attributed to the candidate.

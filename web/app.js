@@ -41,8 +41,14 @@ function download(name, text, type = 'text/csv') {
     const a = document.createElement('a');
     a.href = url;
     a.download = name;
+    a.hidden = true;
+    document.body.append(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status('Download requested: ' + name + '. Check your browser downloads.');
+    setTimeout(() => {
+        a.remove();
+        URL.revokeObjectURL(url);
+    }, 30000);
 }
 function table(headers, rows) {
     const t = document.createElement('table'), head = t.createTHead().insertRow();
@@ -106,7 +112,7 @@ function plot(canvas, series, xLabel, yLabel, logY = false) {
         });
         c.stroke();
         c.fillStyle = s.color;
-        c.fillText(s.name, 75 + i * 245, 22);
+        c.fillText(s.name, 75 + (i % 3) * 290, 20 + Math.floor(i / 3) * 16);
     });
     c.fillStyle = '#334e68';
     c.fillText(xLabel, w / 2 - 35, h - 6);
@@ -189,7 +195,8 @@ function drawScene() {
             p.forEach((v, j) => j ? c.lineTo(v[0], v[1]) : c.moveTo(v[0], v[1]));
             c.closePath();
             c.fillStyle = `hsl(202,38%,${64 + i % 5 * 3}%)`;
-            c.fill();
+            if (!scene.wireframe)
+                c.fill();
             c.strokeStyle = '#234d6b';
             c.stroke();
         });
@@ -264,6 +271,22 @@ async function loadGeometry(kind, text, name) {
     const data = await api(kind, text);
     scene.vertices = data.vertices || [];
     scene.nodes = data.nodes || [];
+    const details = $('#geometry-details'), summary = data.summary;
+    details.replaceChildren();
+    if (kind === 'stl')
+        details.append(table([ 'C++ mesh diagnostic', 'Value' ], [
+            [ 'Triangles', summary.triangles ],
+            [ 'Surface area (source units²)', summary.surface_area_source_units2.toPrecision(7) ],
+            [ 'Degenerate triangles', summary.degenerate_triangles ],
+            [ 'Bounds minimum', summary.bounds_min.join(', ') ],
+            [ 'Bounds maximum', summary.bounds_max.join(', ') ]
+        ]));
+    else
+        details.append(table([ 'C++ temperature diagnostic', 'Value' ], [
+            [ 'Nodes', summary.count ], [ 'Minimum (°C)', summary.min_temperature_C ],
+            [ 'Maximum (°C)', summary.max_temperature_C ],
+            [ 'Mean (°C)', summary.mean_temperature_C.toPrecision(7) ]
+        ]));
     $('#inspection').textContent =
         kind === 'stl'
             ? `${name}: ${scene.vertices.length / 3} triangles loaded.`
@@ -294,6 +317,12 @@ async function loadGeometry(kind, text, name) {
 });
 function showThermal(run) {
     thermal = run;
+    const parameters = run.parameters;
+    $('#analysis-context').textContent = `Displayed result: L=${parameters.length_m} m · A=${
+        parameters.area_m2} m² · k=${parameters.conductivity_W_mK} W/(m K) · q=${
+        parameters.heat_generation_W_m3} W/m³ · boundaries ${parameters.left_C} / ${
+        parameters.right_C} °C · N=${run.elements}.`;
+    renderDiagnostics(run);
     const exact = [];
     for (let i = 0; i < run.nodes.length - 1; i++) {
         exact.push([ run.nodes[i][0], run.nodes[i][2] ],
@@ -318,12 +347,23 @@ $('#thermal-form').onsubmit = e => {
     e.preventDefault();
     const button = e.target.querySelector('button'),
           values = [...new FormData(e.target).values() ].join(' ');
-    task(button, 'Solving in C++…', async () => showThermal(await api('thermal', values)));
+    task(button, 'Solving in C++…', async () => {
+        const result = await api('thermal', values);
+        studyData = null;
+        $('#mesh-selector').disabled = true;
+        $('#mesh-selector').replaceChildren();
+        $('#convergence-export').disabled = true;
+        const canvas = $('#convergence-chart');
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        showThermal(result);
+    });
 };
 $('#study')
     .onclick = e => task(e.target, 'Running four meshes and analytical checks…', async () => {
     studyData = await api('study');
     showThermal(studyData.runs.at(-1));
+    populateMeshSelector();
+    plotStudy();
     $('#thermal-summary')
         .replaceChildren(table(
             [ 'Elements', 'Max midpoint error (°C)', 'Error ratio' ],
@@ -351,8 +391,42 @@ $('#benchmark-form').onsubmit = e => {
     const form = new FormData(e.target);
     task(e.target.querySelector('[type=submit]'),
          'Benchmark running: warm-up and five repetitions per worker count…', async () => {
-             performanceData =
-                 await api('benchmark', form.get('cases') + ' ' + form.get('elements'));
+             const cancel = $('#cancel-benchmark'), progress = $('#benchmark-progress');
+             cancel.disabled = true;
+             progress.value = 0;
+             $('#progress-label').textContent = 'Starting benchmark…';
+             let monitoring = true;
+             const timer = setInterval(async () => {
+                 try {
+                     const response = await fetch('/api/progress', {method : 'POST'});
+                     const state = await response.json();
+                     if (!monitoring)
+                         return;
+                     cancel.disabled = !state.running || state.cancel_requested;
+                     progress.max = Math.max(1, state.total);
+                     progress.value = state.completed;
+                     $('#progress-label').textContent =
+                         `${state.completed.toLocaleString()} / ${
+                             state.total.toLocaleString()} solves completed` +
+                         (state.cancel_requested ? ' · cancellation requested' : '');
+                 } catch {
+                     $('#progress-label').textContent = 'Waiting for backend…';
+                 }
+             }, 250);
+             try {
+                 performanceData =
+                     await api('benchmark', form.get('cases') + ' ' + form.get('elements'));
+                 progress.value = progress.max;
+                 $('#progress-label').textContent = 'Completed · all repetitions verified';
+             } catch (error) {
+                 $('#progress-label').textContent =
+                     'Stopped. Any earlier completed results remain available.';
+                 throw error;
+             } finally {
+                 monitoring = false;
+                 clearInterval(timer);
+                 cancel.disabled = true;
+             }
              const d = performanceData;
              $('#benchmark-results')
                  .replaceChildren(table(
@@ -429,6 +503,194 @@ $('#backprop').onclick = e =>
 $('#loss-export').onclick = () => download(
     'loss.csv', 'update,loss\n0,' + backpropData.initial_loss + '\n' +
                     backpropData.loss_after_updates.map((v, i) => `${i + 1},${v}`).join('\n'));
+
+// Additional inspection controls operate on completed C++ result payloads only.
+function create(tag, text, id) {
+    const e = document.createElement(tag);
+    if (text)
+        e.textContent = text;
+    if (id)
+        e.id = id;
+    return e;
+}
+function control(text, id, fn) {
+    const b = create('button', text, id);
+    b.type = 'button';
+    b.onclick = fn;
+    return b;
+}
+function installEnhancedControls() {
+    const context = create('p', 'No analysis selected. Run a solver or study.', 'analysis-context');
+    context.className = 'note';
+    $('#thermal-chart').before(context);
+    $('#thermal > p.note:last-child').textContent =
+        'Each temperature curve is labelled. Midpoint errors use FE interpolation. Heat flux is positive in the +x direction; outward boundary heat flows include source contributions. Energy imbalance and equation residuals provide independent numerical checks.';
+    const geometryDetails = create('div', null, 'geometry-details');
+    $('#inspection').after(geometryDetails);
+    const thermalBar = $('#study').parentElement;
+    thermalBar.append(control('Study current parameters', 'custom-study', e => {
+        const form = $('#thermal-form');
+        if (!form.reportValidity())
+            return;
+        task(e.target, 'Running convergence study with current rod parameters…', async () => {
+            studyData = await api('custom-study', [...new FormData(form).values() ].join(' '));
+            showThermal(studyData.runs.at(-1));
+            populateMeshSelector();
+            plotStudy();
+            $('#thermal-summary')
+                .replaceChildren(
+                    table([ 'Elements', 'Midpoint error (°C)', 'Observed order' ],
+                          studyData.runs.map(
+                              (r, i) => [r.elements, r.midpoint_error_C.toExponential(6),
+                                         i && r.midpoint_error_C > 1e-12
+                                             ? (Math.log2(studyData.runs[i - 1].midpoint_error_C /
+                                                          r.midpoint_error_C))
+                                                   .toFixed(4)
+                                             : '—'])));
+            $('#convergence-export').disabled = false;
+            plot($('#convergence-chart'), [ {
+                     name : 'Custom midpoint error',
+                     color : '#236f9d',
+                     points : studyData.runs.map(r => [r.elements, r.midpoint_error_C])
+                 } ],
+                 'Elements', 'Error (°C)', true);
+        });
+    }));
+    const meshLabel = create('label', 'Inspect mesh');
+    const selector = create('select', null, 'mesh-selector');
+    selector.disabled = true;
+    selector.onchange = () => {
+        if (selector.value === 'all') {
+            showThermal(studyData.runs.at(-1));
+            plotStudy();
+        } else
+            showThermal(studyData.runs.find(r => r.elements === Number(selector.value)));
+    };
+    meshLabel.append(selector);
+    thermalBar.append(meshLabel);
+    const midpoint = control(
+        'Export midpoint & flux CSV', 'midpoint-export',
+        () => download(
+            'midpoint_flux.csv',
+            'x_m,FEA_C,exact_C,error_C,heat_flux_W_m2,heat_flow_W\n' +
+                thermal.midpoints
+                    .map((m, i) => [...m, m[1] - m[2], thermal.flux[i][1], thermal.flux[i][2]].join(
+                             ','))
+                    .join('\n')));
+    midpoint.disabled = true;
+    thermalBar.append(midpoint);
+    const json = control('Export analysis JSON', 'analysis-export',
+                         () => download('thermal_analysis.json',
+                                        JSON.stringify({
+                                            exported_at : new Date().toISOString(),
+                                            selected_result : thermal,
+                                            study : studyData
+                                        },
+                                                       null, 2),
+                                        'application/json'));
+    json.disabled = true;
+    thermalBar.append(json);
+    const diagnostics = create('div', null, 'thermal-diagnostics');
+    diagnostics.className = 'metric-grid';
+    $('#thermal-summary').after(diagnostics);
+    const flux = create('canvas', null, 'flux-chart');
+    flux.width = 1000;
+    flux.height = 300;
+    flux.setAttribute('aria-label', 'Heat flux along the rod');
+    diagnostics.after(flux);
+    const progressBox = create('div', null, 'progress-panel');
+    progressBox.className = 'progress-panel';
+    const progress = create('progress', null, 'benchmark-progress');
+    progress.max = 1;
+    progress.value = 0;
+    progress.setAttribute('aria-label', 'Benchmark progress');
+    const label = create('span', 'Ready to run', 'progress-label');
+    label.setAttribute('role', 'status');
+    const cancel = control('Cancel benchmark safely', 'cancel-benchmark', async () => {
+        try {
+            const result = await api('cancel');
+            cancel.disabled = true;
+            $('#progress-label').textContent =
+                result.requested ? 'Cancellation requested; finishing active cases…'
+                                 : 'No active benchmark; awaiting completed results.';
+        } catch (e) {
+            status(e.message, true);
+        }
+    });
+    cancel.disabled = true;
+    progressBox.append(progress, label, cancel);
+    $('#benchmark-form').after(progressBox);
+    const views = create('div');
+    views.className = 'toolbar';
+    for (const [name, yaw, pitch] of [[ 'Front view', 0, 0 ], [ 'Top view', 0, Math.PI / 2 ],
+                                      [ 'Isometric view', .65, -.4 ]])
+        views.append(control(name, null, () => {
+            scene.yaw = yaw;
+            scene.pitch = pitch;
+            fit();
+        }));
+    $('#fit').parentElement.after(views);
+    views.append(control('Toggle wireframe', null, () => {
+        scene.wireframe = !scene.wireframe;
+        drawScene();
+    }));
+}
+function populateMeshSelector() {
+    const select = $('#mesh-selector');
+    select.replaceChildren();
+    for (const value of ['all', ...studyData.runs.map(r => r.elements)]) {
+        const option =
+            create('option', value === 'all' ? 'Compare all meshes' : String(value) + ' elements');
+        option.value = value;
+        select.append(option);
+    }
+    select.disabled = false;
+}
+function plotStudy() {
+    const colors = [ '#236f9d', '#278765', '#8c53a0', '#c16c2c' ];
+    const series = studyData.runs.map((r, i) => ({
+                                          name : 'FEA · N=' + r.elements,
+                                          color : colors[i],
+                                          points : r.nodes.map(n => n.slice(0, 2))
+                                      }));
+    const r = studyData.runs.at(-1), points = [];
+    r.nodes.forEach((n, i) => {
+        points.push([ n[0], n[2] ]);
+        if (r.midpoints[i])
+            points.push([ r.midpoints[i][0], r.midpoints[i][2] ]);
+    });
+    series.push({name : 'Analytical', color : '#202e40', points});
+    plot($('#thermal-chart'), series, 'Position x (m)', 'T (°C)');
+}
+function renderDiagnostics(run) {
+    const box = $('#thermal-diagnostics');
+    if (!box)
+        return;
+    const d = run.diagnostics;
+    box.replaceChildren();
+    for (const [label, value, unit] of [[ 'Left outward heat', d.left_outflow_W, 'W' ],
+                                        [ 'Right outward heat', d.right_outflow_W, 'W' ],
+                                        [ 'Generated heat', d.generated_heat_W, 'W' ],
+                                        [ 'Energy imbalance', d.energy_imbalance_W, 'W' ],
+                                        [ 'Max equation residual', d.max_residual_W, 'W' ],
+                                        [ 'Max nodal error', d.nodal_error_C, '°C' ]]) {
+        const card = create('div');
+        card.className = 'metric';
+        card.append(create('span', label),
+                    create('strong', Math.abs(value) < 1e-5 ? value.toExponential(3) + ' ' + unit
+                                                            : value.toPrecision(6) + ' ' + unit));
+        box.append(card);
+    }
+    plot($('#flux-chart'), [ {
+             name : 'Element heat flux (+x direction)',
+             color : '#278765',
+             points : run.flux.map(v => v.slice(0, 2))
+         } ],
+         'Position x (m)', 'Flux (W/m²)');
+    $('#midpoint-export').disabled = false;
+    $('#analysis-export').disabled = false;
+}
+installEnhancedControls();
 fetch('/api/health')
     .then(r => r.json())
     .then(d => {

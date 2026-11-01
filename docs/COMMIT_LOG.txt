@@ -1,3 +1,4 @@
+4552da2 2026-11-01T18:14:38+05:30 Verify portable archive, extracted source build and final checkpoint evidence
 91b92ad 2026-11-01T18:12:55+05:30 Prepare extraction audit and refresh final browser evidence
 1826161 2026-11-01T18:12:03+05:30 Review integration, harden inputs, verify recovery and add reproducible evidence
 c721e16 2026-11-01T17:40:49+05:30 Implement portable C++ workbench core, browser interface and verification suite

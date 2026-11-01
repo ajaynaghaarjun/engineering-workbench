@@ -35,6 +35,11 @@ int main() {
             if (previous)
                 check(std::abs(previous / t.midpointError - 4) < 1e-6, "Second-order convergence");
             previous = t.midpointError;
+            check(std::abs(t.leftOutflow - .42) < 1e-9, "Left boundary reaction heat flow");
+            check(std::abs(t.rightOutflow - .58) < 1e-9, "Right boundary reaction heat flow");
+            check(std::abs(t.leftOutflow + t.rightOutflow - t.generatedHeat) < 1e-9,
+                  "Global energy conservation");
+            check(t.residual < 1e-9, "Assembled interior equation residual");
         }
         wb::Rod r;
         r.heat = 0;
@@ -42,7 +47,9 @@ int main() {
         r.right = 80;
         r.length = 2;
         auto t = wb::solve(r);
-        check(std::abs(t.temperature[10] - 30) < 1e-10, "Zero-source linear solution");
+        check(std::abs(t.temperature[10] - 30) < 1e-10 && std::abs(t.leftOutflow - .05) < 1e-10 &&
+                  std::abs(t.rightOutflow + .05) < 1e-10,
+              "Zero-source linear solution and signed boundary heat flows");
         r.conductivity = 0;
         rejects([&] { wb::solve(r); });
         r.conductivity = 10;
@@ -85,6 +92,13 @@ int main() {
         for (std::size_t i = 1; i < b.loss.size(); ++i)
             check(b.loss[i] <= b.loss[i - 1] + 1e-15, "Loss increases");
         auto rows = wb::benchmark(20, 40);
+        std::atomic<bool> cancelled{true};
+        rejects([&] { wb::benchmark(20, 40, &cancelled); });
+        cancelled = false;
+        std::atomic<std::size_t> completed{0};
+        auto counted = wb::benchmark(20, 40, &cancelled, &completed);
+        check(completed == 20 * (1 + 6 * counted.size()),
+              "Benchmark progress covers reference warmups and measured solves");
         check(!rows.empty(), "Benchmark output");
         for (auto &row : rows) {
             check(row.samples.size() == 5, "Five timing repetitions");

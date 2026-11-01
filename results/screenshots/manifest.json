@@ -4,6 +4,14 @@
     "captured_utc": "2026-11-01T12:39:31.713Z"
   },
   {
+    "file": "benchmark-cancellation.png",
+    "captured_utc": "2026-11-01T12:58:52.743Z"
+  },
+  {
+    "file": "geometry-enhanced.png",
+    "captured_utc": "2026-11-01T12:54:20.660Z"
+  },
+  {
     "file": "geometry.png",
     "captured_utc": "2026-11-01T12:22:52.437Z"
   },
@@ -22,6 +30,10 @@
   {
     "file": "temperature-cloud.png",
     "captured_utc": "2026-11-01T12:22:57.813Z"
+  },
+  {
+    "file": "thermal-enhanced.png",
+    "captured_utc": "2026-11-01T13:01:39.750Z"
   },
   {
     "file": "thermal.png",

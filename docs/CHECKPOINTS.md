@@ -1,5 +1,11 @@
 # Verification checkpoints
 
+## Enhanced release v1.1
+
+Added 317-core-check suite and 15 API scenarios. Enhancements include safe benchmark cancellation and live progress; custom-parameter convergence; all-mesh comparison and selected-mesh inspection; heat flux, reaction heat flows, energy balance, equation residual and nodal error diagnostics; richer exports with parameters; C++ mesh/temperature summaries; camera presets and wireframe. Cancellation is exercised while health remains responsive, then a fresh benchmark is started successfully. Previous completed results remain intact after cancellation.
+
+For the default rod, outward heat flows are 0.42 W and 0.58 W against 1 W generation. These are recovered with half-element source contributions at the boundaries. Flux exports use the positive-x convention. Source limits and Windows verification limitations remain unchanged.
+
 ## 1. Foundation - passed available checks
 
 Mac CMake release build passed. Windows x64 release cross-build passed. Browser connects to the loopback C++ backend. Windows runtime launch remains unverified. Sandbox initially prevented socket bind; approved local execution resolved it. CMake and MinGW were installed through Homebrew.

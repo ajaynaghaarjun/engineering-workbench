@@ -18,13 +18,14 @@ Implementation and verification completed on the available Mac environment. Wind
 - PASS: zero-source non-default boundary case.
 - PASS: gradient central differences and training convergence.
 
-## Latest verification
+## Latest verification (v1.1)
 
-- 299 core checks pass in Release and under AddressSanitizer/UndefinedBehaviorSanitizer.
-- 12 HTTP integration scenarios pass.
+- 317 core checks cover added energy conservation and cancellation checks.
+- 15 HTTP integration scenarios cover live progress, cancellation, recovery, custom studies and C++ import summaries.
 - Windows cross-build passes after correcting formatting-induced Windows header ordering.
 - Browser timeout-state handling corrected and verified.
 - Six-page report rendered and visually inspected; timestamped walkthrough and source-inclusive ZIP prepared.
+- Enhanced release adds thermal diagnostics, custom mesh studies, richer exports, camera presets, wireframe and C++ import statistics.
 
 ## Next candidate actions
 

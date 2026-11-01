@@ -1,5 +1,16 @@
 # Unified Engineering Workbench
 
+## Version 1.1 enhancements
+
+- Live benchmark progress and safe cancellation between independent cases; cancelled batches never replace completed results.
+- Thermal heat-flux plot, outward boundary heat flows, source total, energy imbalance, equation residual and nodal error diagnostics.
+- All-mesh overlay, individual mesh inspection and convergence studies using custom rod parameters.
+- Midpoint/flux CSV and complete analysis JSON with explicit parameter metadata.
+- C++ geometry bounds, surface-area and degenerate-triangle summaries; temperature minimum/maximum/mean summaries.
+- Front, top and isometric camera presets plus wireframe toggle.
+
+The initial package is preserved under dist/fallback on the development machine. This release includes 317 core assertions and 15 HTTP integration scenarios, including cancellation and restart.
+
 C++17 assessment prototype for geometry import, rod thermal FEA, multicore execution, simulated embedded devices and explicit backpropagation. AI assistance is disclosed in docs/AI_USE_LOG.md.
 
 ## Windows 11 x64: one-click use
@@ -56,7 +67,7 @@ Geometry: load ASCII STL or CSV. Drag rotates, Shift-drag pans, scroll zooms, Fi
 
 Thermal: run a custom rod or the required four-mesh study. The latter always uses the assignment defaults regardless of custom form edits. Export temperatures or convergence CSVs.
 
-Performance: set case count and mesh size, run a bounded worker batch, then export all five raw repetitions per worker count. Maximum 20 million total elements. One active thermal/benchmark computation is admitted; a competing request receives an actionable busy error. A calculation safely completes if the view changes. No partial results are committed or exported. There is no mid-solve cancellation.
+Performance: set case count and mesh size, run a bounded worker batch, then export all five raw repetitions per worker count. Maximum 20 million total elements. One active thermal/benchmark computation is admitted; a competing request receives an actionable busy error. Live progress counts reference, warm-up and measured solves. Cancel stops between cases and waits for active cases to finish; cancelled partial results are discarded. A thermal calculation safely completes if the view changes. UI timing includes progress-counter overhead; CLI evidence generation omits the optional progress counters.
 
 Hardware: all device behaviour is simulated. Inspect capabilities, connect, request telemetry, trigger timeout, reconnect, and disconnect. No drivers, firmware or actual hardware are accessed.
 

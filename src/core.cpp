@@ -98,6 +98,13 @@ Thermal solve(const Rod &r) {
         out.x[i] = i * h;
         require(finite(out.temperature[i]) && finite(exact(r, out.x[i])),
                 "Parameters exceed supported numerical range.");
+        out.nodalError =
+            std::max(out.nodalError, std::abs(out.temperature[i] - exact(r, out.x[i])));
+        if (i > 0 && i < n)
+            out.residual = std::max(out.residual,
+                                    std::abs(ke * (2 * out.temperature[i] - out.temperature[i - 1] -
+                                                   out.temperature[i + 1]) -
+                                             2 * fe));
     }
     for (std::size_t i = 0; i < n; ++i) {
         const double error = std::abs(.5 * out.temperature[i] + .5 * out.temperature[i + 1] -
@@ -105,12 +112,22 @@ Thermal solve(const Rod &r) {
         require(finite(error), "Midpoint comparison exceeds numerical range.");
         out.midpointError = std::max(out.midpointError, error);
     }
+    // Recover outward boundary heat flow from the original assembled boundary equations.
+    // The half-element source contribution is essential for global conservation.
+    out.leftOutflow = ke * (out.temperature[1] - out.temperature[0]) + fe;
+    out.rightOutflow = ke * (out.temperature[n - 1] - out.temperature[n]) + fe;
+    out.generatedHeat = r.heat * r.area * r.length;
+    require(finite(out.generatedHeat) && finite(out.leftOutflow) && finite(out.rightOutflow) &&
+                finite(out.residual),
+            "Thermal diagnostics exceed numerical range.");
     return out;
 }
 std::string thermalJson(const Rod &r, const Thermal &t) {
     auto s = stream();
     s << "{\"elements\":" << r.elements << ",\"midpoint_error_C\":" << t.midpointError
-      << ",\"nodes\":[";
+      << ",\"parameters\":{\"length_m\":" << r.length << ",\"area_m2\":" << r.area
+      << ",\"conductivity_W_mK\":" << r.conductivity << ",\"heat_generation_W_m3\":" << r.heat
+      << ",\"left_C\":" << r.left << ",\"right_C\":" << r.right << "},\"nodes\":[";
     for (std::size_t i = 0; i < t.x.size(); ++i) {
         if (i)
             s << ',';
@@ -121,10 +138,23 @@ std::string thermalJson(const Rod &r, const Thermal &t) {
         if (i)
             s << ',';
         double x = .5 * (t.x[i] + t.x[i + 1]);
-        s << '[' << x << ',' << .5 * (t.temperature[i] + t.temperature[i + 1]) << ',' << exact(r, x)
-          << ']';
+        s << '[' << x << ',' << (.5 * t.temperature[i] + .5 * t.temperature[i + 1]) << ','
+          << exact(r, x) << ']';
     }
-    s << "]}";
+    s << "],\"flux\":[";
+    for (std::size_t i = 0; i < r.elements; ++i) {
+        if (i)
+            s << ',';
+        const double flux =
+            -r.conductivity * (t.temperature[i + 1] - t.temperature[i]) / (r.length / r.elements);
+        require(finite(flux) && finite(flux * r.area), "Heat flux exceeds numerical range.");
+        s << '[' << .5 * (t.x[i] + t.x[i + 1]) << ',' << flux << ',' << flux * r.area << ']';
+    }
+    s << "],\"diagnostics\":{\"nodal_error_C\":" << t.nodalError
+      << ",\"max_residual_W\":" << t.residual << ",\"left_outflow_W\":" << t.leftOutflow
+      << ",\"right_outflow_W\":" << t.rightOutflow << ",\"generated_heat_W\":" << t.generatedHeat
+      << ",\"energy_imbalance_W\":" << std::abs(t.leftOutflow + t.rightOutflow - t.generatedHeat)
+      << "}}";
     return s.str();
 }
 std::vector<Vertex> parseStl(const std::string &text) {
@@ -208,6 +238,7 @@ std::vector<Node> parseCsv(const std::string &text) {
     return nodes;
 }
 std::string geometryJson(const std::vector<Vertex> &v) {
+    require(!v.empty() && v.size() % 3 == 0, "Geometry summary requires complete triangles.");
     auto s = stream();
     s << "{\"vertices\":[";
     for (std::size_t i = 0; i < v.size(); ++i) {
@@ -215,10 +246,34 @@ std::string geometryJson(const std::vector<Vertex> &v) {
             s << ',';
         s << '[' << v[i].x << ',' << v[i].y << ',' << v[i].z << ']';
     }
-    s << "]}";
+    Vertex lo = v.front(), hi = v.front();
+    double area = 0;
+    std::size_t degenerate = 0;
+    for (const auto &p : v) {
+        lo.x = std::min(lo.x, p.x);
+        lo.y = std::min(lo.y, p.y);
+        lo.z = std::min(lo.z, p.z);
+        hi.x = std::max(hi.x, p.x);
+        hi.y = std::max(hi.y, p.y);
+        hi.z = std::max(hi.z, p.z);
+    }
+    for (std::size_t i = 0; i < v.size(); i += 3) {
+        Vertex a{v[i + 1].x - v[i].x, v[i + 1].y - v[i].y, v[i + 1].z - v[i].z};
+        Vertex b{v[i + 2].x - v[i].x, v[i + 2].y - v[i].y, v[i + 2].z - v[i].z};
+        double cx = a.y * b.z - a.z * b.y, cy = a.z * b.x - a.x * b.z, cz = a.x * b.y - a.y * b.x;
+        double triangle = .5 * std::sqrt(cx * cx + cy * cy + cz * cz);
+        area += triangle;
+        if (triangle == 0)
+            ++degenerate;
+    }
+    s << "],\"summary\":{\"triangles\":" << v.size() / 3
+      << ",\"surface_area_source_units2\":" << area << ",\"degenerate_triangles\":" << degenerate
+      << ",\"bounds_min\":[" << lo.x << ',' << lo.y << ',' << lo.z << "],\"bounds_max\":[" << hi.x
+      << ',' << hi.y << ',' << hi.z << "]}}";
     return s.str();
 }
 std::string nodesJson(const std::vector<Node> &v) {
+    require(!v.empty(), "Node summary requires at least one node.");
     auto s = stream();
     s << "{\"nodes\":[";
     for (std::size_t i = 0; i < v.size(); ++i) {
@@ -227,10 +282,20 @@ std::string nodesJson(const std::vector<Node> &v) {
         s << '[' << v[i].id << ',' << v[i].x << ',' << v[i].y << ',' << v[i].z << ',' << v[i].t
           << ']';
     }
-    s << "]}";
+    double minimum = v.front().t, maximum = minimum, sum = 0;
+    for (const auto &p : v) {
+        minimum = std::min(minimum, p.t);
+        maximum = std::max(maximum, p.t);
+        sum += p.t;
+    }
+    s << "],\"summary\":{\"count\":" << v.size() << ",\"min_temperature_C\":" << minimum
+      << ",\"max_temperature_C\":" << maximum << ",\"mean_temperature_C\":" << sum / v.size()
+      << "}}";
     return s.str();
 }
-std::vector<Benchmark> benchmark(std::size_t count, std::size_t elements) {
+std::vector<Benchmark> benchmark(std::size_t count, std::size_t elements,
+                                 const std::atomic<bool> *cancel,
+                                 std::atomic<std::size_t> *completed) {
     require(count >= 10 && count <= 20000 && elements >= 10 && elements <= 10000 &&
                 count * elements <= 20000000,
             "Use 10-20000 cases, 10-10000 elements, and at most 20 million total elements.");
@@ -248,14 +313,20 @@ std::vector<Benchmark> benchmark(std::size_t count, std::size_t elements) {
         std::atomic<std::size_t> next{0};
         auto worker = [&]() {
             for (;;) {
+                if (cancel && cancel->load())
+                    break;
                 auto i = next.fetch_add(1);
                 if (i >= count)
                     break;
                 dest[i] = solve(cases[i]);
+                if (completed)
+                    completed->fetch_add(1);
             }
         };
         if (workers == 1) {
             worker();
+            require(!cancel || !cancel->load(),
+                    "Benchmark cancelled safely. No partial results were published.");
             return;
         }
         std::vector<std::thread> pool;
@@ -263,6 +334,8 @@ std::vector<Benchmark> benchmark(std::size_t count, std::size_t elements) {
             pool.emplace_back(worker);
         for (auto &t : pool)
             t.join();
+        require(!cancel || !cancel->load(),
+                "Benchmark cancelled safely. No partial results were published.");
     };
     run(1, reference);
     std::vector<Benchmark> rows;

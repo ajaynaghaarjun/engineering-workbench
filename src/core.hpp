@@ -13,6 +13,7 @@ struct Rod {
 struct Thermal {
     std::vector<double> x, temperature;
     double midpointError = 0;
+    double nodalError = 0, residual = 0, leftOutflow = 0, rightOutflow = 0, generatedHeat = 0;
 };
 double exact(const Rod &, double);
 Thermal solve(const Rod &);
@@ -32,7 +33,9 @@ struct Benchmark {
     std::vector<double> samples;
     double median, speedup, efficiency, difference;
 };
-std::vector<Benchmark> benchmark(std::size_t count, std::size_t elements);
+std::vector<Benchmark> benchmark(std::size_t count, std::size_t elements,
+                                 const std::atomic<bool> *cancel = nullptr,
+                                 std::atomic<std::size_t> *completed = nullptr);
 std::string benchmarkJson(const std::vector<Benchmark> &, std::size_t, std::size_t);
 struct Backprop {
     std::array<double, 4> gradient, numerical, updated;
