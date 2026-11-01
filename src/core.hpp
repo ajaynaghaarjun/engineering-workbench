@@ -18,6 +18,12 @@ struct Thermal {
 double exact(const Rod &, double);
 Thermal solve(const Rod &);
 std::string thermalJson(const Rod &, const Thermal &);
+struct Probe {
+    double x, temperature, exactTemperature, error, flux;
+    std::size_t element;
+};
+Probe probe(const Rod &, double x);
+std::string probeJson(const Probe &);
 struct Vertex {
     double x, y, z;
 };

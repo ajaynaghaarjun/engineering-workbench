@@ -20,12 +20,24 @@
     "captured_utc": "2026-11-01T12:41:28.057Z"
   },
   {
+    "file": "hardware-specific-telemetry.png",
+    "captured_utc": "2026-11-01T13:35:16.182Z"
+  },
+  {
     "file": "hardware-timeout.png",
     "captured_utc": "2026-11-01T12:40:07.691Z"
   },
   {
+    "file": "node-explorer.png",
+    "captured_utc": "2026-11-01T13:33:19.283Z"
+  },
+  {
     "file": "performance.png",
     "captured_utc": "2026-11-01T12:42:13.285Z"
+  },
+  {
+    "file": "probe-preview.png",
+    "captured_utc": "2026-11-01T13:38:09.541Z"
   },
   {
     "file": "temperature-cloud.png",
@@ -34,6 +46,10 @@
   {
     "file": "thermal-enhanced.png",
     "captured_utc": "2026-11-01T13:02:52.228Z"
+  },
+  {
+    "file": "thermal-probe.png",
+    "captured_utc": "2026-11-01T13:35:04.940Z"
   },
   {
     "file": "thermal.png",

@@ -18,10 +18,10 @@ Implementation and verification completed on the available Mac environment. Wind
 - PASS: zero-source non-default boundary case.
 - PASS: gradient central differences and training convergence.
 
-## Latest verification (v1.1)
+## Latest verification (v1.2)
 
-- 317 core checks cover added energy conservation and cancellation checks.
-- 15 HTTP integration scenarios cover live progress, cancellation, recovery, custom studies and C++ import summaries.
+- 321 core checks cover numerical verification, cancellation and the thermal probe.
+- 20 HTTP integration scenarios include device capabilities, reconnect sequences, concurrent telemetry and bounded timestamped events.
 - Windows cross-build passes after correcting formatting-induced Windows header ordering.
 - Browser timeout-state handling corrected and verified.
 - Six-page report rendered and visually inspected; timestamped walkthrough and source-inclusive ZIP prepared.

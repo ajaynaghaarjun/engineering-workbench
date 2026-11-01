@@ -43,7 +43,7 @@ The external STM32 harness is a design assumption: select target-side PA13/PA14/
 
 ## Mock contract
 
-Request: `device action`, where device is `microcontroller`, `fpga`, or `jtag`; actions are inspect, connect, telemetry, timeout, disconnect. C++ owns state under a mutex. Telemetry is one fixed deterministic simulated status message. A timeout moves the device to disconnected; telemetry then fails until reconnect. HTTP integration tests exercise the full sequence for each device.
+Request: `device action`, where device is `microcontroller`, `fpga`, or `jtag`; actions are inspect, connect, telemetry, timeout, disconnect. A dedicated C++ HardwareRegistry owns state under a mutex. MCU telemetry contains a simulated 32.5 C reading; FPGA telemetry reports a simulated sequence-derived logic counter and assumed 100 MHz mock clock; the debug adapter reports simulated 3.3 V target reference and SWD status. These values are mock fixtures, not measured board specifications. Sequence numbers advance only on telemetry and persist across reconnects. A timeout disconnects the mock; telemetry then fails until reconnect. Discovery reports current state and distinct capabilities. The last 100 actions, including disconnected telemetry failures, are logged with C++ timestamps and exportable as JSON. HTTP tests cover all devices, concurrent telemetry, reconnect sequencing and history bounds.
 
 ## Sources and assumptions
 

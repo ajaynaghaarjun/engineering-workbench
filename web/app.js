@@ -222,6 +222,15 @@ function drawScene() {
         $('#legend').textContent = 'STL coordinates: source units (sample: m)';
     c.fillStyle = '#668097';
     c.font = '13px sans-serif';
+    const selected = scene.projected.find(p => p.n[0] === scene.selectedNode);
+    if (selected) {
+        c.strokeStyle = '#172c41';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(selected.p[0], selected.p[1], 12, 0, 2 * Math.PI);
+        c.stroke();
+        c.lineWidth = 1;
+    }
     c.fillText('Orthographic 3D · drag to rotate · Shift-drag to pan', 18, 490);
 }
 let drag = null;
@@ -271,6 +280,9 @@ async function loadGeometry(kind, text, name) {
     const data = await api(kind, text);
     scene.vertices = data.vertices || [];
     scene.nodes = data.nodes || [];
+    scene.selectedNode = null;
+    nodePage = 0;
+    renderNodeExplorer();
     const details = $('#geometry-details'), summary = data.summary;
     details.replaceChildren();
     if (kind === 'stl')
@@ -317,6 +329,7 @@ async function loadGeometry(kind, text, name) {
 });
 function showThermal(run) {
     thermal = run;
+    $('#convergence-chart').hidden = !studyData;
     const parameters = run.parameters;
     $('#analysis-context').textContent = `Displayed result: L=${parameters.length_m} m · A=${
         parameters.area_m2} m² · k=${parameters.conductivity_W_mK} W/(m K) · q=${
@@ -458,6 +471,7 @@ $('#benchmark-export').onclick = () => download(
         h.textContent = title;
         card.append(h);
         const state = document.createElement('p');
+        state.id = 'device-state-' + id;
         state.textContent = 'Simulated · disconnected';
         card.append(state);
         ['inspect', 'connect', 'telemetry', 'timeout', 'disconnect'].forEach(action => {
@@ -468,6 +482,7 @@ $('#benchmark-export').onclick = () => download(
                 state.textContent =
                     'Simulated · ' + (result.connected ? 'connected' : 'disconnected');
                 $('#hardware-output').textContent = JSON.stringify(result, null, 2);
+                await refreshHardwareEvents();
                 if (result.error)
                     status(result.error, true);
             });
@@ -520,6 +535,7 @@ function control(text, id, fn) {
     return b;
 }
 function installEnhancedControls() {
+    $('#convergence-chart').hidden = true;
     const context = create('p', 'No analysis selected. Run a solver or study.', 'analysis-context');
     context.className = 'note';
     $('#thermal-chart').before(context);
@@ -663,6 +679,12 @@ function plotStudy() {
     plot($('#thermal-chart'), series, 'Position x (m)', 'T (°C)');
 }
 function renderDiagnostics(run) {
+    $('#probe-position').max = run.parameters.length_m;
+    if (Number($('#probe-position').value) > run.parameters.length_m)
+        $('#probe-position').value = run.parameters.length_m / 2;
+    $('#probe-result').textContent =
+        'Choose a position inside the displayed rod and evaluate the C++ interpolation.';
+    $('#evaluate-probe').disabled = false;
     const box = $('#thermal-diagnostics');
     if (!box)
         return;
@@ -690,7 +712,193 @@ function renderDiagnostics(run) {
     $('#midpoint-export').disabled = false;
     $('#analysis-export').disabled = false;
 }
+let nodePage = 0, filteredNodes = [], hardwareEventData = null;
+function renderNodeExplorer() {
+    const section = $('#node-explorer');
+    if (!section)
+        return;
+    section.hidden = !scene.nodes.length;
+    if (section.hidden)
+        return;
+    const query = $('#node-search').value.trim().toLowerCase();
+    filteredNodes = scene.nodes.filter(
+        n => !query || n.some(value => String(value).toLowerCase().includes(query)));
+    const sort = $('#node-sort').value;
+    filteredNodes.sort((a, b) => sort === 'temperature' ? b[4] - a[4] : a[0] - b[0]);
+    const pages = Math.max(1, Math.ceil(filteredNodes.length / 100));
+    nodePage = Math.min(nodePage, pages - 1);
+    const visible = filteredNodes.slice(nodePage * 100, nodePage * 100 + 100);
+    const grid = table([ 'Node ID', 'x (m)', 'y (m)', 'z (m)', 'Temperature (°C)' ], visible);
+    [...grid.tBodies[0].rows].forEach((row, i) => {
+        row.tabIndex = 0;
+        row.title = 'Select this node in the 3D view';
+        const select = () => {
+            const n = visible[i];
+            scene.selectedNode = n[0];
+            $('#inspection').textContent =
+                `Node ${n[0]} · x=${n[1]} m, y=${n[2]} m, z=${n[3]} m · ${n[4]} °C`;
+            drawScene();
+        };
+        row.onclick = select;
+        row.onkeydown = e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                select();
+            }
+        };
+    });
+    $('#node-table').replaceChildren(grid);
+    $('#node-page-status').textContent = `${filteredNodes.length} matching nodes · page ${
+        nodePage + 1} of ${pages} · select a row to highlight a node`;
+    $('#nodes-prev').disabled = nodePage === 0;
+    $('#nodes-next').disabled = nodePage >= pages - 1;
+    $('#nodes-export').disabled = !filteredNodes.length;
+}
+async function refreshHardwareEvents() {
+    const response = await fetch('/api/hardware-events', {method : 'POST'});
+    if (!response.ok)
+        throw Error('Cannot retrieve hardware event log.');
+    hardwareEventData = await response.json();
+    $('#hardware-event-table')
+        .replaceChildren(table([ 'Event', 'Time', 'Device', 'Action', 'Outcome' ],
+                               hardwareEventData.events.slice().reverse().map(
+                                   e => [e.sequence, new Date(e.epoch_ms).toLocaleTimeString(),
+                                         e.device, e.action, e.outcome])));
+}
+async function discoverHardware() {
+    const data = await api('devices');
+    for (const d of data.devices) {
+        $('#device-state-' + d.device).textContent =
+            'Simulated · ' + (d.connected ? 'connected' : 'disconnected');
+        let text = $('#device-capabilities-' + d.device);
+        if (!text) {
+            text = create('p', null, 'device-capabilities-' + d.device);
+            text.className = 'note';
+            $('#device-state-' + d.device).after(text);
+        }
+        text.textContent = d.protocol + ' · ' + d.capabilities.join(', ');
+    }
+    await refreshHardwareEvents();
+}
+function installExplorationControls() {
+    const probeSection = create('section');
+    probeSection.className = 'inspection-panel';
+    probeSection.append(create('h3', 'Probe the displayed rod'));
+    const probeBar = create('div');
+    probeBar.className = 'toolbar';
+    const label = create('label', 'Position x (m)');
+    const position = create('input', null, 'probe-position');
+    position.type = 'number';
+    position.required = true;
+    position.min = 0;
+    position.max = 1;
+    position.step = 'any';
+    position.value = .5;
+    label.htmlFor = position.id;
+    label.append(position);
+    const button = control(
+        'Evaluate probe', 'evaluate-probe',
+        e => task(e.target, 'Evaluating shape functions in C++…', async () => {
+            if (!position.reportValidity())
+                throw Error('Enter a probe position between 0 and the displayed rod length.');
+            const p = thermal.parameters;
+            const values = [
+                position.value, p.length_m, p.area_m2, p.conductivity_W_mK, p.heat_generation_W_m3,
+                p.left_C, p.right_C, thermal.elements
+            ].join(' ');
+            const r = await api('probe', values);
+            $('#probe-result')
+                .replaceChildren(table(
+                    [
+                        'x (m)', 'FEA (°C)', 'Exact (°C)', 'Abs error (°C)', 'Flux (W/m²)',
+                        'Element (1-based)'
+                    ],
+                    [ [
+                        r.x_m, r.FEA_C.toPrecision(9), r.exact_C.toPrecision(9),
+                        r.absolute_error_C.toExponential(4), r.heat_flux_W_m2.toPrecision(8),
+                        r.element_index + 1
+                    ] ]));
+        }));
+    button.disabled = true;
+    probeBar.append(label, button);
+    probeSection.append(probeBar, create('div', 'Run a thermal analysis first.', 'probe-result'));
+    $('#flux-chart').after(probeSection);
+    const section = create('section', null, 'node-explorer');
+    section.hidden = true;
+    section.className = 'inspection-panel';
+    section.append(create('h3', 'Temperature node explorer'));
+    const bar = create('div');
+    bar.className = 'toolbar';
+    const searchLabel = create('label', 'Search node values');
+    const search = create('input', null, 'node-search');
+    search.type = 'search';
+    searchLabel.htmlFor = search.id;
+    search.placeholder = 'Node ID, position or temperature';
+    search.oninput = () => {
+        nodePage = 0;
+        renderNodeExplorer();
+    };
+    searchLabel.append(search);
+    const sortLabel = create('label', 'Sort nodes');
+    const sort = create('select', null, 'node-sort');
+    sortLabel.htmlFor = sort.id;
+    for (const [value, name] of [[ 'id', 'Node ID ascending' ],
+                                 [ 'temperature', 'Temperature descending' ]]) {
+        const option = create('option', name);
+        option.value = value;
+        sort.append(option);
+    }
+    sort.onchange = () => {
+        nodePage = 0;
+        renderNodeExplorer();
+    };
+    sortLabel.append(sort);
+    bar.append(searchLabel, sortLabel,
+               control('Export filtered nodes', 'nodes-export',
+                       () => download('filtered_nodes.csv',
+                                      'node_id,x_m,y_m,z_m,temperature_C\n' +
+                                          filteredNodes.map(n => n.join(',')).join('\n'))));
+    section.append(bar, create('p', null, 'node-page-status'), create('div', null, 'node-table'));
+    const paging = create('div');
+    paging.className = 'toolbar';
+    paging.append(control('Previous page', 'nodes-prev', () => {
+                      nodePage--;
+                      renderNodeExplorer();
+                  }), control('Next page', 'nodes-next', () => {
+                      nodePage++;
+                      renderNodeExplorer();
+                  }));
+    section.append(paging);
+    $('#geometry-details').after(section);
+    const events = create('section');
+    events.className = 'inspection-panel';
+    events.append(create('h3', 'Simulated hardware event log'));
+    const eventBar = create('div');
+    eventBar.className = 'toolbar';
+    eventBar.append(
+        control('Discover devices', 'discover-devices',
+                e => task(e.target, 'Discovering C++ mock adapters…', discoverHardware)),
+        control('Refresh event log', 'refresh-events',
+                e => task(e.target, 'Loading event log…', refreshHardwareEvents)),
+        control('Export event log JSON', 'events-export', () => {
+            if (hardwareEventData)
+                download('hardware_events.json', JSON.stringify(hardwareEventData, null, 2),
+                         'application/json');
+        }));
+    const historyDetails = create('details');
+    historyDetails.append(create('summary', 'Show recent hardware actions'),
+                          create('div', null, 'hardware-event-table'));
+    events.append(
+        eventBar,
+        create(
+            'p',
+            'Last 100 actions from this application session; timestamps are generated in C++. All events and telemetry are simulated.'),
+        historyDetails);
+    $('#hardware-output').after(events);
+    discoverHardware().catch(e => status(e.message, true));
+}
 installEnhancedControls();
+installExplorationControls();
 fetch('/api/health')
     .then(r => r.json())
     .then(d => {

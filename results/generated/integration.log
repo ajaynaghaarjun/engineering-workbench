@@ -1,4 +1,4 @@
-2026-11-01T13:01:10.558Z
+2026-11-01T13:39:08.088Z
 PASS backend health
 PASS thermal numerical study
 PASS custom rod and export payload
@@ -14,3 +14,8 @@ PASS cross-origin API request rejected
 PASS thermal heat flux and energy conservation
 PASS custom-parameter convergence study
 PASS live progress, responsive health, safe cancellation and restart
+PASS C++ probe interpolation, flux and range validation
+PASS C++ discovery exposes distinct device capabilities
+PASS telemetry sequence survives disconnect and reconnect
+PASS concurrent telemetry retains unique ordered sequence numbers
+PASS hardware history is bounded, timestamped and ordered

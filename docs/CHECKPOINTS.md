@@ -1,5 +1,9 @@
 # Verification checkpoints
 
+## Exploration release v1.2
+
+321 core checks and 20 API scenarios cover the thermal probe, distinct mock capabilities, reconnect sequence persistence, concurrent telemetry uniqueness and bounded timestamped history in addition to prior checks. A probe-boundary rounding issue was found and corrected by enforcing the exact endpoint interpolation coordinate. Browser checks cover node filtering/highlighting, a between-node probe at x=0.525 m, discovery and hardware history.
+
 ## Enhanced release v1.1
 
 Added 317-core-check suite and 15 API scenarios. Enhancements include safe benchmark cancellation and live progress; custom-parameter convergence; all-mesh comparison and selected-mesh inspection; heat flux, reaction heat flows, energy balance, equation residual and nodal error diagnostics; richer exports with parameters; C++ mesh/temperature summaries; camera presets and wireframe. Cancellation is exercised while health remains responsive, then a fresh benchmark is started successfully. Previous completed results remain intact after cancellation.

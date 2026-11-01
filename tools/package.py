@@ -7,7 +7,7 @@ DEST=ROOT/'dist/Workbench'
 DEST.mkdir(parents=True,exist_ok=True)
 for name in ['web','data','src','tests','cmake','docs','results','licenses','.vscode']:
     copytree(ROOT/name,DEST/name,dirs_exist_ok=True)
-for name in ['CMakeLists.txt','README.md','LICENSES.md','dependencies.lock.json','.clang-format','.gitignore']:
+for name in ['CMakeLists.txt','README.md','LICENSES.md','dependencies.lock.json','.clang-format','.gitignore','.gitattributes']:
     copy2(ROOT/name,DEST/name)
 copytree(ROOT/'tools',DEST/'tools',dirs_exist_ok=True)
 copy2(ROOT/'build/windows/Launch.exe',DEST/'Launch.exe')

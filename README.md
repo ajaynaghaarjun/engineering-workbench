@@ -1,5 +1,14 @@
 # Unified Engineering Workbench
 
+## Version 1.2 enhancements
+
+- C++ thermal probe evaluates interpolated temperature, analytical error and element flux at any position inside the displayed rod.
+- Temperature-node explorer provides search, sorting, 100-row pagination, row-to-3D highlighting and filtered CSV export.
+- Dedicated C++ hardware registry exposes device-specific capabilities and telemetry, synchronizes discovery state, and keeps a timestamped log of the last 100 actions with JSON export.
+- Telemetry sequence numbers persist across reconnects; disconnected requests fail explicitly. Mock FPGA counters and debug-probe status are distinct from MCU temperature telemetry.
+
+Version 1.2 is verified by 321 core checks and 20 API scenarios. All hardware remains simulated. Previous release archives are retained under dist/fallback on the development machine.
+
 ## Version 1.1 enhancements
 
 - Live benchmark progress and safe cancellation between independent cases; cancelled batches never replace completed results.
@@ -9,7 +18,7 @@
 - C++ geometry bounds, surface-area and degenerate-triangle summaries; temperature minimum/maximum/mean summaries.
 - Front, top and isometric camera presets plus wireframe toggle.
 
-The initial package is preserved under dist/fallback on the development machine. This release includes 317 core assertions and 15 HTTP integration scenarios, including cancellation and restart.
+The version 1.1 baseline included 317 core assertions and 15 HTTP integration scenarios, including cancellation and restart.
 
 C++17 assessment prototype for geometry import, rod thermal FEA, multicore execution, simulated embedded devices and explicit backpropagation. AI assistance is disclosed in docs/AI_USE_LOG.md.
 
@@ -55,6 +64,7 @@ Generate raw numerical evidence with `Launch.exe --evidence results/generated` o
 
 - `src/core.hpp`, `src/core.cpp`: pure C++ numerical algorithms, parsers, batch concurrency and explicit gradients.
 - `src/main.cpp`: portable launcher, bounded local HTTP request pool, C++ mock device state, API transport and evidence exports.
+- `src/hardware.hpp`, `src/hardware.cpp`: modular, thread-safe simulated device registry, typed capabilities/telemetry and bounded timestamped event history.
 - `web/`: presentation only; custom Canvas 2D orthographic projection, interaction and charts. Uploaded file parsing and numerical computations run in C++.
 - `data/`: self-created ASCII STL and synthetic ANSYS-style CSV; see PROVENANCE.md.
 - `tests/`: positive, negative, numerical and HTTP integration tests.

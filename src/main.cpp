@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "hardware.hpp"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -38,10 +39,10 @@ void closeSocket(Socket s) {
 
 namespace fs = std::filesystem;
 namespace {
-std::mutex computeMutex, hardwareMutex;
+std::mutex computeMutex;
+wb::HardwareRegistry hardwareRegistry;
 std::atomic<bool> benchmarkActive{false}, benchmarkCancel{false};
 std::atomic<std::size_t> benchmarkCompleted{0}, benchmarkTotal{0};
-std::map<std::string, bool> devices{{"microcontroller", false}, {"fpga", false}, {"jtag", false}};
 std::string read(const fs::path &p) {
     std::ifstream f(p, std::ios::binary);
     if (!f)
@@ -85,29 +86,18 @@ std::string hardware(const std::string &body) {
     std::istringstream in(body);
     std::string device, action;
     in >> device >> action;
-    std::lock_guard<std::mutex> guard(hardwareMutex);
-    if (!devices.count(device))
-        throw std::runtime_error("Select microcontroller, fpga or jtag.");
-    if (action == "connect")
-        devices[device] = true;
-    else if (action == "disconnect")
-        devices[device] = false;
-    else if (action == "timeout") {
-        devices[device] = false;
-        return "{\"simulated\":true,\"connected\":false,\"error\":\"Simulated timeout. Reconnect "
-               "to recover.\"}";
-    } else if (action != "inspect" && action != "telemetry")
-        throw std::runtime_error("Unknown device action.");
-    if (action == "telemetry" && !devices[device])
-        throw std::runtime_error("Device is disconnected. Connect before requesting telemetry.");
-    return "{\"simulated\":true,\"device\":" + wb::quote(device) +
-           ",\"connected\":" + (devices[device] ? "true" : "false") +
-           ",\"capabilities\":[\"discovery\",\"connect\",\"disconnect\",\"telemetry\"],"
-           "\"telemetry\":{\"sequence\":1,\"status\":\"ready\",\"temperature_C\":32.5}}";
+    std::string extra;
+    if (in >> extra)
+        throw std::runtime_error("Supply only a device ID and action.");
+    return hardwareRegistry.execute(device, action);
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.1\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.2\"}";
+    if (path == "/api/devices")
+        return hardwareRegistry.discover();
+    if (path == "/api/hardware-events")
+        return hardwareRegistry.events();
     if (path == "/api/progress")
         return "{\"running\":" + std::string(benchmarkActive ? "true" : "false") +
                ",\"cancel_requested\":" + (benchmarkCancel ? "true" : "false") +
@@ -133,6 +123,15 @@ std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/thermal") {
         auto r = rod(body);
         return wb::thermalJson(r, wb::solve(r));
+    }
+    if (path == "/api/probe") {
+        std::istringstream input(body);
+        double x;
+        std::string remaining;
+        if (!(input >> x))
+            throw std::runtime_error("Supply a probe position followed by rod parameters.");
+        std::getline(input, remaining);
+        return wb::probeJson(wb::probe(rod(remaining), x));
     }
     if (path == "/api/study")
         return study();

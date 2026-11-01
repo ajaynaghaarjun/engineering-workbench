@@ -122,6 +122,30 @@ Thermal solve(const Rod &r) {
             "Thermal diagnostics exceed numerical range.");
     return out;
 }
+Probe probe(const Rod &r, double x) {
+    require(finite(x) && x >= 0 && x <= r.length,
+            "Probe position must lie within the rod (0 to L).");
+    const auto t = solve(r);
+    const double h = r.length / r.elements;
+    const auto element = std::min(r.elements - 1, static_cast<std::size_t>(x / h));
+    const double local = x == r.length ? 1.0 : std::clamp((x - t.x[element]) / h, 0.0, 1.0);
+    const double temperature =
+        (1 - local) * t.temperature[element] + local * t.temperature[element + 1];
+    const double analytical = exact(r, x);
+    return {x,
+            temperature,
+            analytical,
+            std::abs(temperature - analytical),
+            -r.conductivity * (t.temperature[element + 1] - t.temperature[element]) / h,
+            element};
+}
+std::string probeJson(const Probe &p) {
+    auto s = stream();
+    s << "{\"x_m\":" << p.x << ",\"FEA_C\":" << p.temperature
+      << ",\"exact_C\":" << p.exactTemperature << ",\"absolute_error_C\":" << p.error
+      << ",\"heat_flux_W_m2\":" << p.flux << ",\"element_index\":" << p.element << '}';
+    return s.str();
+}
 std::string thermalJson(const Rod &r, const Thermal &t) {
     auto s = stream();
     s << "{\"elements\":" << r.elements << ",\"midpoint_error_C\":" << t.midpointError

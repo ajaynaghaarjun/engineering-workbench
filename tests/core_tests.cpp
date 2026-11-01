@@ -86,6 +86,11 @@ int main() {
               "STL supported triangle limit");
         rejects([&] { wb::parseStl(triangles + facet + "endsolid boundary\n"); });
         auto b = wb::backprop();
+        auto point = wb::probe(wb::Rod{}, .525);
+        check(std::abs(point.error - .3125) < 1e-9, "Probe uses FE interpolation between nodes");
+        check(std::abs(point.flux - 1050) < 1e-7, "Probe reports element heat flux");
+        check(wb::probe(wb::Rod{}, 1).temperature == 20, "Probe at right boundary");
+        rejects([] { wb::probe(wb::Rod{}, 1.01); });
         check(b.maxError < 1e-5, "Gradient finite-difference agreement");
         check(b.loss.size() == 101, "One update plus 100 subsequent steps");
         check(b.loss.back() < 1e-12, "Loss convergence");
