@@ -34,7 +34,11 @@ FEA results are compared to the analytical expression and the expected interpola
 
 ## Candidate review still needed
 
+Further rubric review replaced cryptic CSV conversion exceptions with line-specific actionable numeric/range errors, verified through the malformed-import API scenario.
+
 ## Enhancement request
+
+Version 1.3 followed the candidate's explicit request to add features and review against the rubric. The assistant reviewed the supplied rubric page and mapped all twelve criteria to concrete evidence and remaining gaps. It added a C++ verification/evidence view and guides for Windows acceptance and candidate understanding. Review also found lax HTTP length/method parsing; strict handling and raw malformed-request tests were added. The report's exact-temperature curve now consumes C++ exported values rather than recomputing the physical reference formula in Python. Backend-only launch timing is explicitly distinguished from full browser-ready timing. No numerical company score or Windows launch success was invented.
 
 Version 1.2 followed a further request to add features. It adds a C++ thermal interpolation probe, a paginated/searchable node explorer and a modular mock hardware registry with distinct capabilities, sequenced telemetry and bounded event history. Tests found a right-endpoint rounding discrepancy in the probe; enforcing the exact endpoint shape-function coordinate fixed it. These enhancements were verified without inventing physical device measurements.
 

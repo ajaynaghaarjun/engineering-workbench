@@ -25,7 +25,15 @@ void require(bool condition, const char *message) {
 }
 double number(const std::string &text) {
     std::size_t p = 0;
-    double v = std::stod(text, &p);
+    double v;
+    try {
+        v = std::stod(text, &p);
+    } catch (const std::invalid_argument &) {
+        throw std::runtime_error(
+            "Expected a numeric CSV value; remove text, empty fields or unsupported quoting.");
+    } catch (const std::out_of_range &) {
+        throw std::runtime_error("CSV number is outside the supported floating-point range.");
+    }
     require(text.find_first_not_of(" \r\t", p) == std::string::npos && finite(v),
             "CSV values must be finite numbers.");
     return v;
@@ -235,14 +243,22 @@ std::vector<Node> parseCsv(const std::string &text) {
             "Expected header: node_id,x_m,y_m,z_m,temperature_C");
     std::vector<Node> nodes;
     std::vector<double> ids;
+    std::size_t lineNumber = 1;
     while (std::getline(in, line)) {
+        ++lineNumber;
         if (line.empty() || line == "\r")
             continue;
         std::istringstream row(line);
         std::string cell;
         std::vector<double> values;
-        while (std::getline(row, cell, ','))
-            values.push_back(number(cell));
+        while (std::getline(row, cell, ',')) {
+            try {
+                values.push_back(number(cell));
+            } catch (const std::exception &e) {
+                throw std::runtime_error("CSV line " + std::to_string(lineNumber) + ": " +
+                                         e.what());
+            }
+        }
         require(values.size() == 5 && line.back() != ',',
                 "Each CSV row must have exactly five values.");
         require(values[0] >= 0 && std::floor(values[0]) == values[0] &&

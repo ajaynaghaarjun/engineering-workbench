@@ -1,5 +1,11 @@
 # Unified Engineering Workbench
 
+## Version 1.3 - rubric review and reproducible verification
+
+The Verification & evidence view reruns ten named numerical checks in C++, displays measured errors/tolerances and exports JSON. It links the six-page report, full twelve-criterion rubric review, Windows acceptance procedure and candidate defence guide. It explicitly distinguishes scientific verification from the pending Windows launch, handwritten appendix and candidate understanding gates.
+
+The suite now has 334 core checks and 23 API scenarios. Transport review added strict Content-Length, duplicate-header and method handling with raw-request negative tests. See docs/RUBRIC_REVIEW.md for strengths, limitations and unresolved evidence against every published criterion. No company grade is claimed.
+
 ## Version 1.2 enhancements
 
 - C++ thermal probe evaluates interpolated temperature, analytical error and element flux at any position inside the displayed rod.
@@ -65,6 +71,7 @@ Generate raw numerical evidence with `Launch.exe --evidence results/generated` o
 - `src/core.hpp`, `src/core.cpp`: pure C++ numerical algorithms, parsers, batch concurrency and explicit gradients.
 - `src/main.cpp`: portable launcher, bounded local HTTP request pool, C++ mock device state, API transport and evidence exports.
 - `src/hardware.hpp`, `src/hardware.cpp`: modular, thread-safe simulated device registry, typed capabilities/telemetry and bounded timestamped event history.
+- `src/verification.hpp`, `src/verification.cpp`: named numerical evidence checks with independent error/tolerance comparisons; `web/evidence.js` provides the separate review/evidence presentation.
 - `web/`: presentation only; custom Canvas 2D orthographic projection, interaction and charts. Uploaded file parsing and numerical computations run in C++.
 - `data/`: self-created ASCII STL and synthetic ANSYS-style CSV; see PROVENANCE.md.
 - `tests/`: positive, negative, numerical and HTTP integration tests.

@@ -1,4 +1,4 @@
-2026-11-01T13:39:08.088Z
+2026-11-01T14:45:25.397Z
 PASS backend health
 PASS thermal numerical study
 PASS custom rod and export payload
@@ -19,3 +19,6 @@ PASS C++ discovery exposes distinct device capabilities
 PASS telemetry sequence survives disconnect and reconnect
 PASS concurrent telemetry retains unique ordered sequence numbers
 PASS hardware history is bounded, timestamped and ordered
+PASS runtime verification returns measured named checks and explicit scope
+PASS rubric and acceptance evidence routes are bundled and whitelisted
+PASS malformed HTTP lengths, duplicate headers and unsupported methods fail safely

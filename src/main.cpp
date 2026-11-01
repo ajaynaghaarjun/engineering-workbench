@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "hardware.hpp"
+#include "verification.hpp"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -93,7 +94,7 @@ std::string hardware(const std::string &body) {
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.2\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.3\"}";
     if (path == "/api/devices")
         return hardwareRegistry.discover();
     if (path == "/api/hardware-events")
@@ -124,6 +125,8 @@ std::string api(const std::string &path, const std::string &body) {
         auto r = rod(body);
         return wb::thermalJson(r, wb::solve(r));
     }
+    if (path == "/api/verify")
+        return wb::verificationJson();
     if (path == "/api/probe") {
         std::istringstream input(body);
         double x;
@@ -197,9 +200,12 @@ void handle(Socket client, fs::path root, unsigned port) {
         std::istringstream header(request.substr(0, split));
         std::string method, path, version, line;
         header >> method >> path >> version;
+        if (version != "HTTP/1.1" && version != "HTTP/1.0")
+            throw std::runtime_error("Unsupported HTTP request version.");
         std::getline(header, line);
         std::size_t length = 0;
         std::string host, origin;
+        bool seenLength = false, seenHost = false, seenOrigin = false;
         while (std::getline(header, line)) {
             if (!line.empty() && line.back() == '\r')
                 line.pop_back();
@@ -211,12 +217,30 @@ void handle(Socket client, fs::path root, unsigned port) {
                 c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             while (!value.empty() && value.front() == ' ')
                 value.erase(value.begin());
-            if (key == "content-length")
+            if (key == "content-length") {
+                if (seenLength)
+                    throw std::runtime_error("Duplicate Content-Length is not supported.");
+                seenLength = true;
+                if (value.empty() || value.find_first_not_of("0123456789") != std::string::npos)
+                    throw std::runtime_error(
+                        "Content-Length must be a non-negative decimal integer.");
                 length = std::stoull(value);
-            if (key == "host")
+            }
+            if (key == "transfer-encoding")
+                throw std::runtime_error(
+                    "Transfer-Encoding is unsupported. Supply Content-Length.");
+            if (key == "host") {
+                if (seenHost)
+                    throw std::runtime_error("Duplicate Host header.");
+                seenHost = true;
                 host = value;
-            if (key == "origin")
+            }
+            if (key == "origin") {
+                if (seenOrigin)
+                    throw std::runtime_error("Duplicate Origin header.");
+                seenOrigin = true;
                 origin = value;
+            }
         }
         std::string expected = "127.0.0.1:" + std::to_string(port);
         if (host != expected)
@@ -235,7 +259,7 @@ void handle(Socket client, fs::path root, unsigned port) {
         body.resize(length);
         std::string content, type = "application/json";
         if (path.rfind("/api/", 0) == 0) {
-            if (method != "POST" && path != "/api/health")
+            if (method != "POST" && !(path == "/api/health" && method == "GET"))
                 throw std::runtime_error("Use POST for API operations.");
             content = api(path, body);
         } else {
@@ -246,6 +270,12 @@ void handle(Socket client, fs::path root, unsigned port) {
                 {"/app.js", {"web/app.js", "text/javascript; charset=utf-8"}},
                 {"/style.css", {"web/style.css", "text/css"}},
                 {"/enhancements.css", {"web/enhancements.css", "text/css"}},
+                {"/evidence.js", {"web/evidence.js", "text/javascript; charset=utf-8"}},
+                {"/docs/Report.pdf", {"docs/Report.pdf", "application/pdf"}},
+                {"/docs/RUBRIC_REVIEW.md", {"docs/RUBRIC_REVIEW.md", "text/plain; charset=utf-8"}},
+                {"/docs/WINDOWS_ACCEPTANCE.md",
+                 {"docs/WINDOWS_ACCEPTANCE.md", "text/plain; charset=utf-8"}},
+                {"/docs/DEFENCE_GUIDE.md", {"docs/DEFENCE_GUIDE.md", "text/plain; charset=utf-8"}},
                 {"/sample.stl", {"data/sample.stl", "text/plain"}},
                 {"/temperatures.csv", {"data/temperatures.csv", "text/csv"}}};
             if (!allowed.count(path))
@@ -270,6 +300,7 @@ void handle(Socket client, fs::path root, unsigned port) {
 }
 void evidence(const fs::path &dir) {
     fs::create_directories(dir);
+    write(dir / "verification.json", wb::verificationJson());
     write(dir / "thermal.json", study());
     std::ostringstream nodes, errors;
     nodes << "elements,x_m,temperature_C,exact_C\n";

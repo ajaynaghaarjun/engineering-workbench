@@ -81,7 +81,7 @@ story.append(Paragraph('1. Design and reproducibility',styles['Heading2']))
 p('A portable C++ executable serves a bundled browser interface over loopback only. C++ owns numerical work, parsers, benchmarks and hardware mock state. HTML/CSS/JavaScript provide presentation, an orthographic 3D view and plots. No external frontend or solver libraries are needed, and no CDN is used.')
 table(['Layer','Implementation'],[['Numerical core','Two-node rod FEA, tridiagonal solve, analytical comparison, explicit backpropagation'],['Input','Strict ASCII STL and five-column nodal CSV parsing in C++'],['Concurrency','Bounded numerical workers; independently bounded HTTP request pool; deterministic result ordering'],['Presentation','Geometry, Thermal, Performance, Hardware and Backpropagation views; validation, status, errors, exports'],['Delivery','CMake source build; Windows Launch.exe; VS Code task; relative runtime asset paths']],[100,390])
 p('After ZIP extraction, Launch.exe starts the backend and opens the default browser. The console remains open and closing it stops the app. Runtime data and web paths are resolved relative to the executable, rather than the current working directory. Windows system DLLs are not redistributed; MinGW/GCC runtime code is statically linked.')
-p('See README.md for exact build/test commands, data/PROVENANCE.md for input contracts, dependencies.lock.json and LICENSES.md for dependencies, and the Git bundle for actual development history. A typed guide is supplied for the candidate to prepare their own handwritten appendix.')
+p('See README.md for build/test commands, data/PROVENANCE.md for inputs, dependencies.lock.json and LICENSES.md for dependencies, and the Git bundle for actual history. Verification & evidence reruns ten C++ checks with measured tolerances. docs/RUBRIC_REVIEW.md maps all twelve criteria to evidence and pending gates. Windows acceptance and candidate defence guides supplement the typed handwritten-appendix guide.')
 page()
 
 h('2. Thermal formulation and verification')
@@ -94,7 +94,14 @@ for i,r in enumerate(thermal['runs']):
 table(['Elements','Max midpoint error (°C)','Previous/current'],rows,[90,210,190])
 palette=['#236f9d','#1e8260','#8a57a2','#bd6b28']
 curves=[(f"FE N={r['elements']}",palette[i],[(n[0],n[1]) for n in r['nodes']]) for i,r in enumerate(thermal['runs'])]
-curves.append(('Exact','#263443',[(i/160,100-80*(i/160)+500*(i/160)*(1-i/160)) for i in range(161)]))
+exact_points=[]
+finest=thermal['runs'][-1]
+for i,node in enumerate(finest['nodes']):
+    exact_points.append((node[0],node[2]))
+    if i<len(finest['midpoints']):
+        middle=finest['midpoints'][i]
+        exact_points.append((middle[0],middle[2]))
+curves.append(('Exact','#263443',exact_points))
 story.append(chart('temperature',curves,'Position x (m)','T (°C)',False,150))
 story.append(chart('convergence',[('Midpoint error','#236f9d',[(r['elements'],r['midpoint_error_C']) for r in thermal['runs']])],'Elements','Error (°C)',True,150))
 p('Observed convergence is second order: halving h reduces error by four. Independent expected midpoint error is |q|h²/(8k). Boundary, zero-source linear, non-default-temperature and invalid-parameter tests supplement analytical agreement. Raw nodal and convergence CSVs are included.')
@@ -114,7 +121,7 @@ p('ASCII STL is parsed as explicit solid/facet/normal/outer-loop/three-vertex/en
 p('The self-created tetrahedron has four triangles; its intended units are metres because STL itself has no unit metadata. The supplied temperature CSV has ten synthetic nodes following the analytical rod profile. It is labelled synthetic and is not presented as an actual ANSYS export. No mesh-to-result registration is performed.')
 p('The custom orthographic renderer supports rotation, pan, zoom and fit. Triangles are depth-sorted; temperature points have a colour legend, coordinate units and clickable ID/location/temperature inspection. It is a small software renderer rather than a CAD engine.')
 table(['Validation area','Evidence'],[['Numerical','Boundary conditions, analytical nodal agreement, midpoint error formula, convergence ratios, zero-source linear case'],['Negative imports','Empty input, no triangles/nodes, malformed structures, wrong fields, non-finite values, duplicate IDs and trailing numeric garbage'],['Input limits','20 MiB per file; 10000 triangles or nodes; coordinate magnitude limits; tested boundary and oversize cases'],['Concurrency','Five repetitions, serial/parallel agreement across all nodal values, deterministic case order'],['Integration','Health, custom/default solves, imports, invalid inputs, benchmark, three mock recovery sequences, gradients, traversal and cross-origin rejection']],[105,385])
-p('Versions 1.1-1.2 add live progress, safe cancellation and restart; partial cancelled results are discarded. Thermal diagnostics expose heat flow, energy balance, residuals and flux. Custom studies, mesh comparison and a C++ between-node probe improve verification. A searchable, sortable, paginated node table highlights selected 3D points and exports filtered CSV. The current suite has 321 core checks and 20 API scenarios.')
+p('Versions 1.1-1.3 add progress/cancellation/restart, thermal diagnostics, custom studies, mesh comparison, a C++ probe and a searchable node explorer. A dedicated verification/evidence view reruns ten C++ checks and links the full rubric audit and acceptance guides. The current suite has 334 core checks and 23 API scenarios, including raw malformed HTTP tests. No runtime badge is a company score or Windows launch certificate.')
 p('Review fixes included preserving timeout messages, removing argument-spread extrema on large plots, bounding HTTP concurrency and replacing implementation-dependent random distributions. Windows runtime validation remains pending; an executable import-table check is not substituted for a real launch test.')
 page()
 

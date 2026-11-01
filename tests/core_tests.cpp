@@ -1,7 +1,9 @@
 #include "core.hpp"
+#include "verification.hpp"
 #include <cmath>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 int checks = 0;
 void check(bool ok, const char *message) {
@@ -110,6 +112,16 @@ int main() {
             check(row.difference <= 1e-8, "Serial/parallel agreement");
             check(row.median > 0 && row.speedup > 0, "Valid timings");
         }
+        const auto report = wb::verifyNumerics();
+        check(report.size() == 10, "Runtime verification covers ten named checks");
+        for (const auto &item : report)
+            check(item.passed(), item.name.c_str());
+        check(
+            !wb::VerificationCheck{"nonfinite", "", std::numeric_limits<double>::quiet_NaN(), 1e-8}
+                 .passed(),
+            "Verification rejects non-finite errors");
+        check(!wb::VerificationCheck{"excessive", "", 1, 1e-8}.passed(),
+              "Verification fails errors above tolerance");
         std::cout << "PASS: " << checks << " checks\n";
         return 0;
     } catch (const std::exception &e) {

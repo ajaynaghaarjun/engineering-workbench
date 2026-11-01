@@ -1,5 +1,9 @@
 # Verification checkpoints
 
+## Rubric release v1.3
+
+Reviewed all twelve published criteria. Added an evidence view with ten fresh C++ numerical checks, measured errors and tolerances, JSON export, evidence links and explicit pending gates. Split verification logic and presentation into their own modules. The full audit is in RUBRIC_REVIEW.md; Windows acceptance and candidate defence guides address the largest remaining evidence gaps. Raw HTTP review corrected malformed Content-Length, duplicate headers and unsupported method/version acceptance. The suite now contains 334 core checks and 23 API scenarios.
+
 ## Exploration release v1.2
 
 321 core checks and 20 API scenarios cover the thermal probe, distinct mock capabilities, reconnect sequence persistence, concurrent telemetry uniqueness and bounded timestamped history in addition to prior checks. A probe-boundary rounding issue was found and corrected by enforcing the exact endpoint interpolation coordinate. Browser checks cover node filtering/highlighting, a between-node probe at x=0.525 m, discovery and hardware history.
