@@ -75,7 +75,7 @@ def chart(name, series, xlabel, ylabel, log=False, height=230):
 def page(): story.append(PageBreak())
 
 h('Unified Engineering Workbench')
-p('Assessment prototype | C++17 | Windows 11 x64 target | 1 November 2026')
+p('Assessment prototype | C++17 | Windows 11 x64 target | 2 November 2026')
 p('<b>Delivery status:</b> a Windows x64 executable has been cross-compiled on Apple Silicon. Mac release builds, numerical tests and HTTP/browser workflows have been exercised. Actual Windows 11 launch is unverified. The candidate handwritten appendix is outstanding. These are explicit limitations, not claimed successes.')
 story.append(Paragraph('1. Design and reproducibility',styles['Heading2']))
 p('A portable C++ executable serves a bundled browser interface over loopback only. C++ owns numerical work, parsers, benchmarks and hardware mock state. HTML/CSS/JavaScript provide presentation, an orthographic 3D view and plots. No external frontend or solver libraries are needed, and no CDN is used.')
@@ -121,7 +121,7 @@ p('ASCII STL is parsed as explicit solid/facet/normal/outer-loop/three-vertex/en
 p('The self-created tetrahedron has four triangles; its intended units are metres because STL itself has no unit metadata. The supplied temperature CSV has ten synthetic nodes following the analytical rod profile. It is labelled synthetic and is not presented as an actual ANSYS export. No mesh-to-result registration is performed.')
 p('The custom orthographic renderer supports rotation, pan, zoom and fit. Triangles are depth-sorted; temperature points have a colour legend, coordinate units and clickable ID/location/temperature inspection. It is a small software renderer rather than a CAD engine.')
 table(['Validation area','Evidence'],[['Numerical','Boundary conditions, analytical nodal agreement, midpoint error formula, convergence ratios, zero-source linear case'],['Negative imports','Empty input, no triangles/nodes, malformed structures, wrong fields, non-finite values, duplicate IDs and trailing numeric garbage'],['Input limits','20 MiB per file; 10000 triangles or nodes; coordinate magnitude limits; tested boundary and oversize cases'],['Concurrency','Five repetitions, serial/parallel agreement across all nodal values, deterministic case order'],['Integration','Health, custom/default solves, imports, invalid inputs, benchmark, three mock recovery sequences, gradients, traversal and cross-origin rejection']],[105,385])
-p('Versions 1.1-1.5 add cancellation, diagnostics, mesh studies, probing, node exploration and accuracy-driven selection. C++ now exposes element stiffness, source loads and nodal contributions, and compares FEM and continuous analytical peaks. Default N=20 peaks: 188 C at 0.40 m versus 188.2 C at 0.42 m. The evidence view reruns ten checks. Suite: 352 core checks and 29 API scenarios. New controls remain visually unverified because browser automation is disabled. No badge certifies Windows launch or a company score.')
+p('Versions 1.1-1.6 add diagnostics, probing, mesh selection, element assembly and peak inspection. A new C++ studies module supports four-property sweeps and two-case comparison. The scenario workspace adds saved configurations, plots/exports, draft recovery and notes. Chart PNG/fullscreen/print controls, high contrast and keyboard navigation extend presentation. Suite: 363 core checks and 33 API scenarios. New UI remains visually unverified because browser automation is disabled. No badge certifies Windows launch or a company score.')
 p('Review fixes include timeout state, large-plot extrema, bounded HTTP concurrency, reproducible inputs, flux overflow rejection, roundoff-aware convergence, explicit form selectors and stale-inspection invalidation. Packaging now stages a fresh inventory and audits complete hash coverage. Windows runtime validation remains pending; import checks do not prove launch.')
 page()
 
@@ -150,7 +150,7 @@ p('<b>AI and ownership:</b> substantial AI-generated code and documentation are 
 
 def footer(canvas,doc):
     canvas.setFont('Helvetica',8);canvas.setFillColor(colors.HexColor('#65788a'))
-    canvas.drawString(42,25,'Unified Engineering Workbench | assessment prototype | 1 November 2026')
+    canvas.drawString(42,25,'Unified Engineering Workbench | assessment prototype | 2 November 2026')
     canvas.drawRightString(553,25,str(doc.page))
 
 SimpleDocTemplate(str(ROOT/'docs/Report.pdf'),pagesize=(595.28,841.89),rightMargin=45,leftMargin=45,topMargin=40,bottomMargin=40).build(story,onFirstPage=footer,onLaterPages=footer)

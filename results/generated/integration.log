@@ -1,4 +1,4 @@
-2026-11-01T18:03:35.000Z
+2026-11-01T19:55:14.407Z
 PASS backend health
 PASS thermal numerical study
 PASS custom rod and export payload
@@ -28,3 +28,7 @@ PASS finite temperatures with overflowing flux fail with valid actionable JSON
 PASS C++ element matrices, source loads and shared-node assembly
 PASS element index validation and custom-parameter inspection
 PASS continuous analytical and mesh-based peak temperatures
+PASS parameter sweep independently verifies k, area and source effects
+PASS sweep rejects invalid factors, sample counts and resource limits
+PASS two-scenario comparison preserves both inputs and reports B minus A
+PASS workspace assets are bundled and served offline

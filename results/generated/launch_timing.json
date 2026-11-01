@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-11-01T14:46:08.362Z",
+  "timestamp": "2026-11-01T19:57:24.593Z",
   "platform": "darwin",
   "method": "Process spawn to health response and HTML response, launched from temporary working directory; excludes browser visual readiness",
   "samples_s": [
-    0.031489542,
-    0.0033040000000000022,
-    0.003238874999999993,
-    0.002363624999999999,
-    0.003453458999999995
+    0.026768875000000008,
+    0.0030743750000000033,
+    0.0031990420000000057,
+    0.002831333000000001,
+    0.003514792
   ],
-  "median_s": 0.0033040000000000022,
+  "median_s": 0.0031990420000000057,
   "windows_runtime_verified": false
 }

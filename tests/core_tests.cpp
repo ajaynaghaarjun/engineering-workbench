@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "studies.hpp"
 #include "verification.hpp"
 #include <cmath>
 #include <functional>
@@ -23,6 +24,34 @@ void rejects(std::function<void()> f) {
 int main() {
     try {
         double previous = 0;
+        auto sweep = wb::sweep(wb::Rod{}, "k", .5, 2, 3);
+        check(sweep.size() == 3 && sweep.front().value == 5 && sweep.back().value == 20,
+              "Sweep uses requested multipliers and property");
+        check(std::abs(sweep.front().midpointError - .625) < 1e-8 &&
+                  std::abs(sweep.back().midpointError - .15625) < 1e-8,
+              "Conductivity sweep independently follows inverse-k midpoint error");
+        check(std::abs(sweep.back().peakTemperature - 128.9) < 1e-9,
+              "Conductivity sweep has expected continuous maximum");
+        auto areaSweep = wb::sweep(wb::Rod{}, "area", .5, 2, 2);
+        check(std::abs(areaSweep[0].peakTemperature - areaSweep[1].peakTemperature) < 1e-8 &&
+                  std::abs(areaSweep[1].generatedHeat - 2) < 1e-12,
+              "Area changes power, not the constant-property temperature profile");
+        rejects([] { wb::sweep(wb::Rod{}, "unknown", .5, 2, 5); });
+        rejects([] { wb::sweep(wb::Rod{}, "k", 2, 1, 5); });
+        rejects([] { wb::sweep(wb::Rod{}, "k", .5, 2, 10); });
+        rejects([] { wb::sweep(wb::Rod{}, "q", 0, 2, 2); });
+        auto lengthSweep = wb::sweep(wb::Rod{}, "length", .5, 2, 2);
+        check(std::abs(lengthSweep[1].midpointError - 1.25) < 1e-8 &&
+                  std::abs(lengthSweep[1].generatedHeat - 2) < 1e-12,
+              "Length sweep has quadratic error and linear power scaling");
+        auto zeroSource = wb::Rod{};
+        zeroSource.heat = 0;
+        const auto zeroSweep = wb::sweep(zeroSource, "q", .5, 2, 2);
+        check(zeroSweep[0].generatedHeat == 0 && zeroSweep[1].midpointError < 1e-8,
+              "Scaling a zero source preserves the linear rod");
+        auto largeStudy = wb::Rod{};
+        largeStudy.elements = 10001;
+        rejects([&] { wb::comparisonJson(largeStudy, wb::Rod{}); });
         const auto first = wb::element(wb::Rod{}, 0), next = wb::element(wb::Rod{}, 1);
         check(std::abs(first.stiffness[0] - .02) < 1e-15 &&
                   first.stiffness[1] == -first.stiffness[0] &&

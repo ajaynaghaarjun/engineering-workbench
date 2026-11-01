@@ -1,4 +1,10 @@
-# Rubric review - version 1.5
+# Rubric review - version 1.6
+
+## Scenario workspace review
+
+The new studies C++ module implements bounded one-property sweeps and two-scenario comparison. Independent tests establish inverse-conductivity error scaling, quadratic length/error scaling, area-independent temperature with area-dependent power, negative/zero sources and comparison deltas. The added view supports named solved scenarios, restore/re-run/delete/export, absolute-coordinate overlays, reproducible sweep exports, draft recovery and notes. PNG/fullscreen/print controls, high contrast and keyboard navigation extend presentation usability. None replaces required Windows runtime or handwritten evidence.
+
+Review rectified a geometry-export variable reference, persistence errors masked by success status and validation feedback aimed at a hidden form. Resource/input limits, exact baseline/result metadata and numerical-difference range checks are explicit. Current suite: 363 core checks and 33 API scenarios; sanitizers and Windows cross-build pass. New frontend controls have not been visually exercised because browser automation is disabled. Saved browser data is origin/port-specific, storage may fail and fullscreen/print/download behaviour still needs actual browser testing. Source size and unverified UI growth are material maintenance/verification limitations; adding features alone does not establish a higher company score.
 
 ## Latest inspection and packaging review
 

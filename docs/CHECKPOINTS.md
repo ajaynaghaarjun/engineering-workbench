@@ -1,5 +1,9 @@
 # Verification checkpoints
 
+## Scenario workspace v1.6
+
+Added bounded C++ sweeps and comparison with independent physical scaling tests. Added scenario-library actions, exports, overlays, input-draft recovery, notes, PNG/fullscreen/print controls, high contrast and keyboard navigation. 363 core checks and 33 API scenarios pass; Release/sanitizer/Windows cross-build checks pass. Source review corrected export references, storage error messages and hidden-form validation feedback. Browser controls remain visually unverified because automation is disabled; no new screenshot or Windows success is claimed.
+
 ## Element/peak enhancement v1.5
 
 Added C++ element stiffness/load/nodal-contribution inspection, evidence JSON export and comparison of FEM and continuous analytical temperature maxima. 352 core checks and 29 API scenarios pass; Release/sanitizer/Windows cross-build checks pass. Review added stale-response invalidation, explicit form selectors and fresh package staging with complete manifest coverage. Browser automation remains disabled, so no new visual verification is claimed. Windows runtime and handwritten candidate work remain pending.

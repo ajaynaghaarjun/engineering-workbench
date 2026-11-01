@@ -92,4 +92,37 @@ await check('continuous analytical and mesh-based peak temperatures',async()=>{
   const cooling=(await api('thermal','1 .0001 10 -10000 20 20 20')).data;
   assert.equal(cooling.peak.analytical_C,20);assert.equal(cooling.peak.analytical_x_m,0);
 });
+await check('parameter sweep independently verifies k, area and source effects',async()=>{
+  const k=(await api('sweep','k .5 2 3 1 .0001 10 10000 100 20 20')).data;
+  assert.equal(k.rows.length,3);assert.equal(k.rows[0].parameter_value,5);
+  assert.ok(Math.abs(k.rows.at(-1).midpoint_error_C-.15625)<1e-8);
+  assert.ok(Math.abs(k.rows.at(-1).analytical_peak_C-128.9)<1e-9);
+  const a=(await api('sweep','area .5 2 2 1 .0001 10 10000 100 20 20')).data;
+  assert.ok(Math.abs(a.rows[0].analytical_peak_C-a.rows[1].analytical_peak_C)<1e-9);
+  assert.equal(a.rows[1].generated_heat_W,2);
+  const q=(await api('sweep','q .5 2 2 1 .0001 10 -10000 20 20 20')).data;
+  assert.equal(q.rows[1].parameter_value,-20000);assert.equal(q.rows[1].analytical_peak_C,20);
+  const length=(await api('sweep','length .5 2 2 1 .0001 10 10000 100 20 20')).data;
+  assert.ok(Math.abs(length.rows[1].midpoint_error_C-1.25)<1e-8);
+});
+await check('sweep rejects invalid factors, sample counts and resource limits',async()=>{
+  for(const prefix of ['k 2 1 5','k 0 2 5','k .5 2 10','bad .5 2 5','k .5 200 5','k .5 2 2.5'])
+    assert.equal((await api('sweep',prefix+' 1 .0001 10 10000 100 20 20')).status,400);
+  assert.equal((await api('sweep','k .5 2 5 1 .0001 10 10000 100 20 10001')).status,400);
+});
+await check('two-scenario comparison preserves both inputs and reports B minus A',async()=>{
+  const {data,status}=await api('compare','1 .0001 10 10000 100 20 20\n1 .0001 20 10000 100 20 20');
+  assert.equal(status,200);assert.equal(data.a.parameters.conductivity_W_mK,10);
+  assert.equal(data.b.parameters.conductivity_W_mK,20);
+  assert.ok(Math.abs(data.difference_B_minus_A.analytical_peak_C+59.3)<1e-8);
+  assert.ok(Math.abs(data.difference_B_minus_A.midpoint_error_C+.15625)<1e-8);
+  assert.equal(data.difference_B_minus_A.generated_heat_W,0);
+  assert.equal((await api('compare','1 .0001 10 10000 100 20 20')).status,400);
+  assert.equal((await api('compare','\n')).status,400);
+  assert.equal((await api('compare','1 .0001 10 10000 100 20 10001\n1 .0001 10 10000 100 20 20')).status,400);
+});
+await check('workspace assets are bundled and served offline',async()=>{
+  for(const path of ['/workspace.js','/workspace.css','/docs/WORKSPACE_GUIDE.md']) assert.equal((await fetch(base+path)).status,200);
+  const html=await fetch(base+'/').then(r=>r.text());assert.match(html,/workspace.js/);assert.match(html,/workspace.css/);
+});
 await mkdir('results/generated',{recursive:true});const output=new Date().toISOString()+'\n'+log.join('\n')+'\n';await writeFile('results/generated/integration.log',output);console.log(output);

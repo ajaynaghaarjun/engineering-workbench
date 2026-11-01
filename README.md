@@ -1,5 +1,16 @@
 # Unified Engineering Workbench
 
+## Version 1.6 - scenario workspace and exploration tools
+
+- C++ parameter sweeps vary conductivity, heat source, length or area over 2-9 evenly spaced multipliers; each case runs the real FEM solver. Results include continuous peak/location, interpolation error, power and energy balance, with plots and CSV/JSON export.
+- Save up to 12 solved parameter sets with names. Restore inputs, re-run a saved case, delete entries or export the library. Two-case comparison runs both cases in C++, reports B-minus-A differences and overlays their FEM curves in absolute metres.
+- Recover the last manually edited thermal-input draft. Keep experiment notes in browser storage and export them as text.
+- Export seven canvases as PNG, expand charts fullscreen where supported, print the active view, toggle a persisted high-contrast mode and switch seven views with Alt/Option+1-7 outside inputs.
+
+Saved configuration belongs to the same browser profile and localhost origin/port; another port or cleared/private storage may not retain it. Browser storage is a convenience, not the submission evidence archive. Export important notes/scenarios/results. Sweep/comparison mesh limits are 10000 elements per case; the required solver/study remain available separately. Read docs/WORKSPACE_GUIDE.md for use and limits.
+
+Current verification: 363 core checks, 33 API scenarios, sanitizers and Windows cross-build. New controls have JavaScript syntax/source review and API checks; local browser automation remains disabled, so no visual workflow validation is claimed. Windows runtime, handwritten appendix and candidate-authored confirmation remain pending. Earlier version counts below are historical.
+
 ## Version 1.5 - element assembly and peak inspection
 
 Thermal Analysis now shows the piecewise-linear FEM peak and the continuous analytical peak, including their locations. For the default 20-element rod these are 188 C at 0.40 m and 188.2 C at 0.42 m. The element inspector exposes the selected element's stiffness matrix (W/K), consistent source loads (W), nodal temperatures, signed nodal contributions and heat flux. Contributions from adjacent elements assemble at shared nodes; a single element's contribution is not a global residual. Element JSON includes the exact rod parameters.

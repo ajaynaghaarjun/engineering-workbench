@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "hardware.hpp"
+#include "studies.hpp"
 #include "verification.hpp"
 #include <algorithm>
 #include <cctype>
@@ -94,7 +95,7 @@ std::string hardware(const std::string &body) {
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.5\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.6\"}";
     if (path == "/api/devices")
         return hardwareRegistry.discover();
     if (path == "/api/hardware-events")
@@ -127,6 +128,24 @@ std::string api(const std::string &path, const std::string &body) {
     }
     if (path == "/api/verify")
         return wb::verificationJson();
+    if (path == "/api/sweep") {
+        std::istringstream input(body);
+        std::string parameter, remaining;
+        double start, end;
+        int samples;
+        if (!(input >> parameter >> start >> end >> samples) || samples < 2 || samples > 9)
+            throw std::runtime_error("Supply sweep parameter, start/end multipliers, integer "
+                                     "samples, then rod parameters.");
+        std::getline(input, remaining);
+        return wb::sweepJson(rod(remaining), parameter, start, end,
+                             static_cast<std::size_t>(samples));
+    }
+    if (path == "/api/compare") {
+        const auto separator = body.find('\n');
+        if (separator == std::string::npos || separator == 0 || separator + 1 == body.size())
+            throw std::runtime_error("Supply two rod parameter rows separated by one newline.");
+        return wb::comparisonJson(rod(body.substr(0, separator)), rod(body.substr(separator + 1)));
+    }
     if (path == "/api/element") {
         std::istringstream input(body);
         std::string token, remaining;
@@ -293,11 +312,15 @@ void handle(Socket client, fs::path root, unsigned port) {
                 {"/evidence.js", {"web/evidence.js", "text/javascript; charset=utf-8"}},
                 {"/accuracy.js", {"web/accuracy.js", "text/javascript; charset=utf-8"}},
                 {"/element.js", {"web/element.js", "text/javascript; charset=utf-8"}},
+                {"/workspace.js", {"web/workspace.js", "text/javascript; charset=utf-8"}},
+                {"/workspace.css", {"web/workspace.css", "text/css"}},
                 {"/docs/Report.pdf", {"docs/Report.pdf", "application/pdf"}},
                 {"/docs/RUBRIC_REVIEW.md", {"docs/RUBRIC_REVIEW.md", "text/plain; charset=utf-8"}},
                 {"/docs/WINDOWS_ACCEPTANCE.md",
                  {"docs/WINDOWS_ACCEPTANCE.md", "text/plain; charset=utf-8"}},
                 {"/docs/DEFENCE_GUIDE.md", {"docs/DEFENCE_GUIDE.md", "text/plain; charset=utf-8"}},
+                {"/docs/WORKSPACE_GUIDE.md",
+                 {"docs/WORKSPACE_GUIDE.md", "text/plain; charset=utf-8"}},
                 {"/sample.stl", {"data/sample.stl", "text/plain"}},
                 {"/temperatures.csv", {"data/temperatures.csv", "text/csv"}}};
             if (!allowed.count(path))

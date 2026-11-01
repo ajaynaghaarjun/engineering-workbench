@@ -18,7 +18,15 @@ Implementation and verification completed on the available Mac environment. Wind
 - PASS: zero-source non-default boundary case.
 - PASS: gradient central differences and training convergence.
 
-## Latest verification (v1.5)
+## Latest verification (v1.6)
+
+- Added C++ parameter sweeps and two-case comparison in a separate studies module.
+- Added a scenario library, restore/re-run/delete/export, input draft recovery, local experiment notes, chart PNG/fullscreen controls, active-view printing, high contrast and keyboard navigation.
+- 363 core checks and 33 API scenarios; Release, sanitizers and Windows cross-build pass.
+- Source review corrected an undefined geometry-export reference, storage-success messages masking persistence errors and invalid-input feedback from a hidden form. These were found during implementation review, not claimed as observed browser failures.
+- New UI remains visually unverified because local browser automation is disabled. Existing Windows/candidate deliverable gaps remain.
+
+## Previous verification (v1.5)
 
 - Element stiffness/load/contribution inspection and mesh-versus-analytical peak temperatures added in C++ and UI.
 - 352 core checks and 29 HTTP scenarios pass, alongside Release, sanitizer and Windows cross-build checks.

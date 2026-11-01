@@ -356,6 +356,13 @@ function showThermal(run) {
         run.midpoint_error_C.toExponential(6)} °C`;
     $('#thermal-export').disabled = false;
 }
+function selectSingleThermal(run) {
+    studyData = null;
+    $('#mesh-selector').disabled = true;
+    $('#mesh-selector').replaceChildren();
+    $('#convergence-export').disabled = true;
+    showThermal(run);
+}
 $('#thermal-form').onsubmit = e => {
     e.preventDefault();
     const button = e.target.querySelector('button'),
