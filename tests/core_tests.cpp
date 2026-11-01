@@ -23,6 +23,22 @@ void rejects(std::function<void()> f) {
 int main() {
     try {
         double previous = 0;
+        check(wb::accuracyJson(wb::Rod{}, 1).find("\"elements\":12") != std::string::npos,
+              "Accuracy selection rounds up to the smallest sufficient uniform mesh");
+        rejects([] { wb::accuracyJson(wb::Rod{}, 0); });
+        rejects([] { wb::accuracyJson(wb::Rod{}, -1); });
+        rejects([] { wb::accuracyJson(wb::Rod{}, std::numeric_limits<double>::infinity()); });
+        rejects([] { wb::accuracyJson(wb::Rod{}, 1e-20); });
+        auto invalidRod = wb::Rod{};
+        invalidRod.conductivity = 0;
+        rejects([&] { wb::accuracyJson(invalidRod, 1); });
+        auto extreme = wb::Rod{};
+        extreme.length = 1e-200;
+        extreme.area = 1e-300;
+        extreme.conductivity = 1e200;
+        extreme.heat = 0;
+        extreme.elements = 2;
+        rejects([&] { wb::solve(extreme); }); // Finite temperatures can still yield infinite flux.
         for (int n : {10, 20, 40, 80}) {
             wb::Rod r;
             r.elements = n;

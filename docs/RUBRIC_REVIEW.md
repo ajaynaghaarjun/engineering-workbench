@@ -1,4 +1,10 @@
-# Rubric review - version 1.3
+# Rubric review - version 1.4
+
+## Latest enhancement review
+
+Accuracy-driven mesh selection extends the thermal/UI evidence: C++ selects a uniform mesh from |q|L²/(8kN²), runs the FEM solver, and reports measured target attainment. It handles negative/zero heat sources and rejects targets beyond the supported mesh limit. Input presets and JSON evidence export support reproducible exploration. This supplements the required four-mesh study.
+
+This pass found and fixed a numerical-range defect: finite nodal temperatures could still produce infinite flux and invalid JSON. Such inputs now fail with an actionable range error; a core regression and HTTP scenario cover this case. The convergence table no longer reports an order when either error is dominated by roundoff. Current suite: 341 core checks and 26 HTTP scenarios. Browser automation is disabled in the current Work settings; the new controls have not been visually exercised. Previous screenshots are historical evidence. No score or outstanding gate status changes follow from these additions.
 
 Basis: the company's three-page Unified Engineering Workbench brief, especially the 100-point rubric on page 3. This is an evidence audit, not a company grade or shortlist prediction. Extra features earn credit only when they improve a published criterion.
 

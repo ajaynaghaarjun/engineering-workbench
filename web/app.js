@@ -558,7 +558,8 @@ function installEnhancedControls() {
                     table([ 'Elements', 'Midpoint error (°C)', 'Observed order' ],
                           studyData.runs.map(
                               (r, i) => [r.elements, r.midpoint_error_C.toExponential(6),
-                                         i && r.midpoint_error_C > 1e-12
+                                         i && r.midpoint_error_C > 1e-12 &&
+                                                 studyData.runs[i - 1].midpoint_error_C > 1e-12
                                              ? (Math.log2(studyData.runs[i - 1].midpoint_error_C /
                                                           r.midpoint_error_C))
                                                    .toFixed(4)

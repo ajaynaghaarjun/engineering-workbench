@@ -115,6 +115,8 @@ Thermal solve(const Rod &r) {
                                              2 * fe));
     }
     for (std::size_t i = 0; i < n; ++i) {
+        require(finite(-r.conductivity * (out.temperature[i + 1] - out.temperature[i]) / h),
+                "Heat flux exceeds supported numerical range. Rescale the rod parameters.");
         const double error = std::abs(.5 * out.temperature[i] + .5 * out.temperature[i + 1] -
                                       exact(r, (i + .5) * h));
         require(finite(error), "Midpoint comparison exceeds numerical range.");
@@ -129,6 +131,32 @@ Thermal solve(const Rod &r) {
                 finite(out.residual),
             "Thermal diagnostics exceed numerical range.");
     return out;
+}
+std::string accuracyJson(Rod r, double targetError) {
+    require(finite(targetError) && targetError > 0, "Target error must be finite and positive.");
+    r.elements = 2;
+    solve(r); // Validate all physical parameters before estimating a mesh size.
+    const long double coefficient = std::abs(static_cast<long double>(r.heat)) /
+                                    (8 * static_cast<long double>(r.conductivity)) * r.length *
+                                    r.length;
+    const long double estimate = std::ceil(std::sqrt(coefficient / targetError));
+    require(std::isfinite(estimate) && estimate <= 200000,
+            "Target requires more than 200000 elements. Increase the allowed error.");
+    r.elements = static_cast<std::size_t>(std::max(2.0L, estimate));
+    // Defend against a rounded-down square root at an integer threshold.
+    if (coefficient / r.elements / r.elements > targetError) {
+        require(r.elements < 200000, "Target requires more than 200000 elements.");
+        ++r.elements;
+    }
+    const auto result = solve(r);
+    auto s = stream();
+    s << "{\"target_error_C\":" << targetError
+      << ",\"predicted_error_C\":" << static_cast<double>(coefficient / r.elements / r.elements)
+      << ",\"target_met\":" << (result.midpointError <= targetError ? "true" : "false")
+      << ",\"method\":\"Uniform mesh: |q| L^2 / (8 k N^2). Measured error includes floating-point "
+         "effects.\""
+      << ",\"run\":" << thermalJson(r, result) << '}';
+    return s.str();
 }
 Probe probe(const Rod &r, double x) {
     require(finite(x) && x >= 0 && x <= r.length,

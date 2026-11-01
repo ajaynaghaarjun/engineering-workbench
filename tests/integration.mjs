@@ -44,4 +44,24 @@ await check('hardware history is bounded, timestamped and ordered',async()=>{for
 await check('runtime verification returns measured named checks and explicit scope',async()=>{const {data,status}=await api('verify');assert.equal(status,200);assert.equal(data.checks.length,10);assert.equal(data.all_passed,true);assert.ok(data.checks.every(c=>c.passed&&c.error<=c.tolerance));assert.match(data.scope,/does not certify/);assert.ok(['macos','windows','linux','other'].includes(data.platform));});
 await check('rubric and acceptance evidence routes are bundled and whitelisted',async()=>{for(const path of ['/evidence.js','/docs/RUBRIC_REVIEW.md','/docs/WINDOWS_ACCEPTANCE.md','/docs/DEFENCE_GUIDE.md']){const response=await fetch(base+path);assert.equal(response.status,200);assert.ok((await response.text()).length>100);}const pdf=await fetch(base+'/docs/Report.pdf');assert.equal(pdf.status,200);assert.equal(pdf.headers.get('content-type'),'application/pdf');assert.equal((await pdf.arrayBuffer()).byteLength>1000,true);});
 await check('malformed HTTP lengths, duplicate headers and unsupported methods fail safely',async()=>{for(const headers of ['Content-Length: 2junk','Content-Length: -1','Content-Length: 0\r\nContent-Length: 1','Transfer-Encoding: chunked','Host: duplicate\r\nContent-Length: 0'])assert.match(await rawRequest(headers),/^HTTP\/1.1 400/);assert.match(await rawRequest('Content-Length: 0','DELETE'),/^HTTP\/1.1 400/);assert.match(await rawRequest('Content-Length: 0','POST','INVALID'),/^HTTP\/1.1 400/);});
+await check('accuracy-driven mesh selection measures achieved error and preserves parameters',async()=>{
+  const {status,data}=await api('accuracy','1 1 .0001 10 10000 100 20 20');
+  assert.equal(status,200);assert.equal(data.run.elements,12);assert.equal(data.target_met,true);
+  assert.ok(data.run.midpoint_error_C<=1);assert.ok(125/11**2>1);
+  assert.ok(Math.abs(data.predicted_error_C-data.run.midpoint_error_C)<1e-8);
+  const cooling=(await api('accuracy','.1 1 .0001 10 -10000 20 20 20')).data;
+  assert.equal(cooling.run.elements,36);assert.equal(cooling.target_met,true);assert.equal(cooling.run.parameters.heat_generation_W_m3,-10000);
+  const linear=(await api('accuracy','.1 2 .0001 10 0 -20 80 20')).data;
+  assert.equal(linear.run.elements,2);assert.equal(linear.predicted_error_C,0);assert.equal(linear.target_met,true);
+  assert.equal((await fetch(base+'/accuracy.js')).status,200);
+});
+await check('accuracy selection rejects invalid, impossible and malformed targets',async()=>{
+  for(const target of ['0','-1','NaN','1e-20'])assert.equal((await api('accuracy',target+' 1 .0001 10 10000 100 20 20')).status,400);
+  assert.equal((await api('accuracy','1 1 .0001 0 10000 100 20 20')).status,400);
+  assert.equal((await api('accuracy','1 garbage')).status,400);
+});
+await check('finite temperatures with overflowing flux fail with valid actionable JSON',async()=>{
+  const response=await api('thermal','1e-200 1e-300 1e200 0 100 20 2');
+  assert.equal(response.status,400);assert.match(response.data.error,/Heat flux exceeds/);
+});
 await mkdir('results/generated',{recursive:true});const output=new Date().toISOString()+'\n'+log.join('\n')+'\n';await writeFile('results/generated/integration.log',output);console.log(output);

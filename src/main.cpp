@@ -94,7 +94,7 @@ std::string hardware(const std::string &body) {
 }
 std::string api(const std::string &path, const std::string &body) {
     if (path == "/api/health")
-        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.3\"}";
+        return "{\"status\":\"ready\",\"backend\":\"C++17\",\"version\":\"1.4\"}";
     if (path == "/api/devices")
         return hardwareRegistry.discover();
     if (path == "/api/hardware-events")
@@ -127,6 +127,15 @@ std::string api(const std::string &path, const std::string &body) {
     }
     if (path == "/api/verify")
         return wb::verificationJson();
+    if (path == "/api/accuracy") {
+        std::istringstream input(body);
+        double target;
+        std::string remaining;
+        if (!(input >> target))
+            throw std::runtime_error("Supply a positive target error followed by rod parameters.");
+        std::getline(input, remaining);
+        return wb::accuracyJson(rod(remaining), target);
+    }
     if (path == "/api/probe") {
         std::istringstream input(body);
         double x;
@@ -271,6 +280,7 @@ void handle(Socket client, fs::path root, unsigned port) {
                 {"/style.css", {"web/style.css", "text/css"}},
                 {"/enhancements.css", {"web/enhancements.css", "text/css"}},
                 {"/evidence.js", {"web/evidence.js", "text/javascript; charset=utf-8"}},
+                {"/accuracy.js", {"web/accuracy.js", "text/javascript; charset=utf-8"}},
                 {"/docs/Report.pdf", {"docs/Report.pdf", "application/pdf"}},
                 {"/docs/RUBRIC_REVIEW.md", {"docs/RUBRIC_REVIEW.md", "text/plain; charset=utf-8"}},
                 {"/docs/WINDOWS_ACCEPTANCE.md",

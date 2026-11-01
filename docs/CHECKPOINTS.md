@@ -1,5 +1,9 @@
 # Verification checkpoints
 
+## Accuracy enhancement v1.4
+
+Added C++ mesh selection from a requested midpoint error, an actual FEM verification solve, evidence JSON export and three parameter presets. Review fixed flux overflow returning invalid JSON and suppressed convergence orders near roundoff. The suite now has 341 core checks and 26 API scenarios. New UI controls have not been visually exercised because browser automation is disabled in the current Work settings; syntax checks and backend scenarios cover their served script and numerical API. Windows runtime and candidate-authored deliverables remain pending.
+
 ## Rubric release v1.3
 
 Reviewed all twelve published criteria. Added an evidence view with ten fresh C++ numerical checks, measured errors and tolerances, JSON export, evidence links and explicit pending gates. Split verification logic and presentation into their own modules. The full audit is in RUBRIC_REVIEW.md; Windows acceptance and candidate defence guides address the largest remaining evidence gaps. Raw HTTP review corrected malformed Content-Length, duplicate headers and unsupported method/version acceptance. The suite now contains 334 core checks and 23 API scenarios.

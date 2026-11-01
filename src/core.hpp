@@ -18,6 +18,8 @@ struct Thermal {
 double exact(const Rod &, double);
 Thermal solve(const Rod &);
 std::string thermalJson(const Rod &, const Thermal &);
+// Uniform mesh selection for the supported constant-property rod, followed by a real FEM solve.
+std::string accuracyJson(Rod, double targetError);
 struct Probe {
     double x, temperature, exactTemperature, error, flux;
     std::size_t element;

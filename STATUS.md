@@ -18,7 +18,14 @@ Implementation and verification completed on the available Mac environment. Wind
 - PASS: zero-source non-default boundary case.
 - PASS: gradient central differences and training convergence.
 
-## Latest verification (v1.3)
+## Latest verification (v1.4)
+
+- Accuracy-driven uniform mesh selection and real FEM error verification added, with JSON evidence export and three input presets.
+- 341 core checks and 26 API scenarios include unsupported accuracy targets and overflowing heat-flux rejection.
+- New UI controls have not been visually exercised because browser automation is disabled in the current Work settings.
+- Roundoff-dominated convergence order is suppressed; infinite flux now produces actionable error JSON.
+
+## Previous verification (v1.3)
 
 - 334 core checks include the ten named runtime verification checks and failure-threshold behaviour.
 - 23 HTTP integration scenarios include malformed raw HTTP rejection, evidence routing and runtime verification scope, as well as prior numerical/hardware checks.

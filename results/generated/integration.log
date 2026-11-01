@@ -1,4 +1,4 @@
-2026-11-01T14:45:25.397Z
+2026-11-01T17:45:15.761Z
 PASS backend health
 PASS thermal numerical study
 PASS custom rod and export payload
@@ -22,3 +22,6 @@ PASS hardware history is bounded, timestamped and ordered
 PASS runtime verification returns measured named checks and explicit scope
 PASS rubric and acceptance evidence routes are bundled and whitelisted
 PASS malformed HTTP lengths, duplicate headers and unsupported methods fail safely
+PASS accuracy-driven mesh selection measures achieved error and preserves parameters
+PASS accuracy selection rejects invalid, impossible and malformed targets
+PASS finite temperatures with overflowing flux fail with valid actionable JSON

@@ -1,5 +1,11 @@
 # Unified Engineering Workbench
 
+## Version 1.4 - accuracy-driven mesh selection
+
+Thermal Analysis now accepts a target midpoint error. C++ selects a uniform mesh using |q|L²/(8kN²), performs a real FEM solve, and reports predicted and measured error with an explicit target-met result. Export its complete parameters/results as JSON. The tool supports heating, heat removal and zero-source rods, rejects targets beyond 200000 elements, and does not promise arbitrary accuracy in floating-point arithmetic. Three parameter presets populate inputs without changing existing results until another solve.
+
+Review fixed overflowing flux being serialized as invalid JSON and suppressed misleading convergence orders near roundoff. The current suite has 341 core checks and 26 API scenarios. Browser automation was disabled for this enhancement pass, so the new controls have syntax/backend verification but have not been visually exercised; earlier screenshots document earlier features. Windows execution and the handwritten appendix remain outstanding. Counts in earlier version entries below are historical.
+
 ## Version 1.3 - rubric review and reproducible verification
 
 The Verification & evidence view reruns ten named numerical checks in C++, displays measured errors/tolerances and exports JSON. It links the six-page report, full twelve-criterion rubric review, Windows acceptance procedure and candidate defence guide. It explicitly distinguishes scientific verification from the pending Windows launch, handwritten appendix and candidate understanding gates.
