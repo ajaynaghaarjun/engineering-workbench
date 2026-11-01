@@ -1,3 +1,4 @@
+c074eef 2026-11-01T18:32:07+05:30 Add thermal diagnostics, custom studies, safe benchmark cancellation and richer inspection
 4552da2 2026-11-01T18:14:38+05:30 Verify portable archive, extracted source build and final checkpoint evidence
 91b92ad 2026-11-01T18:12:55+05:30 Prepare extraction audit and refresh final browser evidence
 1826161 2026-11-01T18:12:03+05:30 Review integration, harden inputs, verify recovery and add reproducible evidence
