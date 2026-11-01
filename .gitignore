@@ -1,0 +1,7 @@
+build/
+dist/
+tmp/
+.DS_Store
+*.zip
+*.bundle
+results/generated/
